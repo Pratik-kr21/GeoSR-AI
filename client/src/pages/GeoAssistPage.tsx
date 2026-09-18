@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { queryGeoAssist } from "../services/api";
+import { useState, useEffect } from "react";
+import { queryGeoAssist, fetchValidationMetrics } from "../services/api";
 
 const suggestions = [
   "Explain validation results",
@@ -20,6 +20,31 @@ export default function GeoAssistPage() {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [contextData, setContextData] = useState([
+    { label: "Input", value: "Sentinel-2 GeoTIFF" },
+    { label: "Input Resolution", value: "10m" },
+    { label: "Enhanced Resolution", value: "2.5m" },
+    { label: "PSNR", value: "—" },
+    { label: "SSIM", value: "—" },
+    { label: "Avg Confidence", value: "—" },
+    { label: "Geo-Consistency", value: "—" },
+  ]);
+
+  useEffect(() => {
+    fetchValidationMetrics(1)
+      .then((m) => {
+        setContextData([
+          { label: "Input", value: "Sentinel-2 GeoTIFF" },
+          { label: "Input Resolution", value: "10m" },
+          { label: "Enhanced Resolution", value: "2.5m" },
+          { label: "PSNR", value: `${m.psnr} dB` },
+          { label: "SSIM", value: `${m.ssim}` },
+          { label: "Avg Confidence", value: `${Math.round(m.avg_confidence * 100)}%` },
+          { label: "Geo-Consistency", value: `${Math.round(m.geo_consistency * 100)}%` },
+        ]);
+      })
+      .catch(() => {});
+  }, []);
 
   const send = async (text: string) => {
     if (!text.trim()) return;
@@ -28,7 +53,6 @@ export default function GeoAssistPage() {
     setThinking(true);
     
     try {
-      // Hardcoding project_id to 1 for MVP
       const result = await queryGeoAssist(1, text);
       setMessages((m) => [
         ...m,
@@ -137,16 +161,7 @@ export default function GeoAssistPage() {
           <div className="text-xs font-display font-600 text-slate-300 uppercase tracking-wider">Analysis Context</div>
         </div>
         <div className="px-4 py-4 space-y-3">
-          {[
-            { label: "Input", value: "Sentinel-2 GeoTIFF" },
-            { label: "Input Resolution", value: "10m" },
-            { label: "Enhanced Resolution", value: "2.5m" },
-            { label: "Spectral Consistency", value: "94%" },
-            { label: "Avg Confidence", value: "87%" },
-            { label: "Low Conf Regions", value: "12 patches" },
-            { label: "CRS", value: "EPSG:32643" },
-            { label: "Bands", value: "B2,B3,B4,B8,B11,B12" },
-          ].map((row) => (
+          {contextData.map((row) => (
             <div key={row.label} className="flex items-start justify-between gap-2">
               <span className="text-[10px] font-mono text-slate-500">{row.label}</span>
               <span className="text-[10px] font-mono text-slate-300 text-right">{row.value}</span>
