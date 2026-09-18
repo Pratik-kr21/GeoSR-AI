@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, LayersControl, useMap, ImageOverlay } from "react-leaflet";
+import { MapContainer, TileLayer, LayersControl, useMap, ImageOverlay, Pane } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { fetchMapBounds } from "../services/api";
+import { fetchMapBounds, fetchInputMapBounds } from "../services/api";
 
 // Utility to handle map resizing dynamically
 const MapResizer = () => {
@@ -9,22 +9,6 @@ const MapResizer = () => {
   useEffect(() => {
     map.invalidateSize();
   }, [map]);
-  return null;
-};
-
-// Utility to clip a specific pane based on sliderX
-const ClipPane = ({ sliderX }: { sliderX: number }) => {
-  const map = useMap();
-  
-  useEffect(() => {
-    const pane = map.getPane("overlayPane");
-    if (pane) {
-      // Set clip path to reveal the left side (0% to sliderX%)
-      pane.style.clipPath = `polygon(0 0, ${sliderX}% 0, ${sliderX}% 100%, 0 100%)`;
-      pane.style.transition = "clip-path 0.1s ease-out";
-    }
-  }, [map, sliderX]);
-  
   return null;
 };
 
@@ -39,21 +23,36 @@ const BoundsFitter = ({ bounds }: { bounds: [[number, number], [number, number]]
   return null;
 };
 
-export default function MapViewer({ sliderX, isCompleted, objectName }: { sliderX: number, isCompleted: boolean, objectName: string | null }) {
+export default function MapViewer({ activeLayers, isCompleted, objectName }: { activeLayers: Set<string>, isCompleted: boolean, objectName: string | null }) {
   const center: [number, number] = [30.7333, 76.7794];
-  const [bounds, setBounds] = useState<[[number, number], [number, number]] | null>(null);
+  const [inputBounds, setInputBounds] = useState<[[number, number], [number, number]] | null>(null);
+  const [outputBounds, setOutputBounds] = useState<[[number, number], [number, number]] | null>(null);
   
+  // Fetch input bounds as soon as an object is uploaded
+  useEffect(() => {
+    if (objectName) {
+      fetchInputMapBounds(1, objectName)
+        .then(res => setInputBounds(res.bounds))
+        .catch(err => console.error("Failed to fetch input bounds", err));
+    } else {
+      setInputBounds(null);
+    }
+  }, [objectName]);
+
+  // Fetch output bounds when SR completes
   useEffect(() => {
     if (isCompleted && objectName) {
       fetchMapBounds(1, objectName)
-        .then(res => setBounds(res.bounds))
-        .catch(err => console.error("Failed to fetch map bounds", err));
+        .then(res => setOutputBounds(res.bounds))
+        .catch(err => console.error("Failed to fetch output bounds", err));
+    } else {
+      setOutputBounds(null);
     }
   }, [isCompleted, objectName]);
 
-  const thumbnailUrl = isCompleted && objectName 
-    ? `http://localhost:8000/api/v1/map/1/outputs/sr_${objectName.split('/').pop()}/thumbnail` 
-    : undefined;
+  const fileId = objectName ? objectName.split('/').pop() : null;
+  const inputThumbnailUrl = fileId ? `http://localhost:8000/api/v1/map/1/inputs/${fileId}/thumbnail` : undefined;
+  const outputThumbnailUrl = fileId ? `http://localhost:8000/api/v1/map/1/outputs/sr_${fileId}/thumbnail` : undefined;
   
   return (
     <div className="absolute inset-0 z-0 bg-navy-950">
@@ -65,7 +64,7 @@ export default function MapViewer({ sliderX, isCompleted, objectName }: { slider
         zoomControl={false}
       >
         <MapResizer />
-        {bounds && <BoundsFitter bounds={bounds} />}
+        {inputBounds && <BoundsFitter bounds={inputBounds} />}
         
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Satellite Base (Esri)">
@@ -82,11 +81,18 @@ export default function MapViewer({ sliderX, isCompleted, objectName }: { slider
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {isCompleted && thumbnailUrl && bounds && (
-          <>
-            <ImageOverlay url={thumbnailUrl} bounds={bounds} zIndex={400} />
-            <ClipPane sliderX={sliderX} />
-          </>
+        {/* Original Input Layer - rendered behind with blur to simulate lower resolution */}
+        {activeLayers.has("original") && inputThumbnailUrl && inputBounds && (
+          <Pane name="originalPane" style={{ zIndex: 300 }}>
+            <ImageOverlay url={inputThumbnailUrl} bounds={inputBounds} className="original-overlay-blur" />
+          </Pane>
+        )}
+
+        {/* Enhanced Output Layer - rendered in a custom pane, sharp */}
+        {activeLayers.has("enhanced") && isCompleted && outputThumbnailUrl && outputBounds && (
+          <Pane name="enhancedPane" style={{ zIndex: 400 }}>
+            <ImageOverlay url={outputThumbnailUrl} bounds={outputBounds} />
+          </Pane>
         )}
       </MapContainer>
     </div>
