@@ -36,13 +36,18 @@ class InferenceService:
                 
             # 3. Initialize Model
             upscale_factor = 4
-            model = SatelliteSRModel(in_channels=in_channels, upscale_factor=upscale_factor)
+            
+            # The weights were trained on 3 channels (RGB). If the input has more (e.g. NIR),
+            # we must only process the first 3 channels to avoid state_dict size mismatches.
+            model_channels = min(in_channels, 3)
+            model = SatelliteSRModel(in_channels=model_channels, upscale_factor=upscale_factor)
             
             # Load trained weights if they exist
             weights_path = "/app/weights/srcnn_weights.pth"
             if os.path.exists(weights_path):
                 print(f"Loading trained weights from {weights_path}")
-                model.load_state_dict(torch.load(weights_path, map_location=self.device))
+                # Use strict=False just in case, but model_channels=3 should fix the root cause
+                model.load_state_dict(torch.load(weights_path, map_location=self.device), strict=False)
             else:
                 print("No trained weights found. Using uninitialized model.")
                 
@@ -64,7 +69,8 @@ class InferenceService:
                 "height": new_h,
                 "width": new_w,
                 "transform": new_transform,
-                "dtype": 'uint8'
+                "dtype": 'uint8',
+                "count": model_channels # Ensure output is 3 channels even if input was 4
             })
             
             print(f"Processing image of size {h}x{w} in tiles of {tile_size}x{tile_size} and streaming to disk...")
@@ -78,7 +84,7 @@ class InferenceService:
                             # Extract tile
                             y_end = min(y + tile_size, h)
                             x_end = min(x + tile_size, w)
-                            tile = bands_data[:, y:y_end, x:x_end]
+                            tile = bands_data[:model_channels, y:y_end, x:x_end]
                             
                             # Convert to tensor (cast to float32 to avoid uint16 PyTorch error)
                             tensor_tile = torch.from_numpy(tile.astype(np.float32)) / 65535.0 if tile.dtype == np.uint16 else torch.from_numpy(tile.astype(np.float32)) / 255.0
