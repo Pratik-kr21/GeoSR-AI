@@ -34,7 +34,7 @@ Keep your responses concise, professional, and focus on interpreting geospatial 
     try:
         client = AsyncClient(host=settings.OLLAMA_URL)
         response = await client.chat(
-            model='llama3.2:1b',
+            model=settings.OLLAMA_MODEL,
             messages=[
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': query.message}
