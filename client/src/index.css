@@ -66,3 +66,8 @@ html, body, #root {
 
 .font-display { font-family: 'Exo 2', sans-serif; }
 .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Blur the original satellite overlay to simulate its lower 10m resolution */
+.original-overlay-blur img {
+  filter: blur(2px) saturate(0.85);
+}
