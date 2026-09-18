@@ -54,7 +54,7 @@ services:
 
   worker:
     build: ./server
-    command: celery -A app.workers.celery_app worker --loglevel=info -Q geosrai_queue
+    command: celery -A app.workers.celery_app worker --loglevel=info -Q geosrai_queue --pool=solo
     environment:
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
