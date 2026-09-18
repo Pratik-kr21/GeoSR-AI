@@ -25,7 +25,6 @@ const defaultRadarData = [
 const comparisons = [
   { label: "Original Input", res: "10m", tag: "Sentinel-2", color: "border-slate-500", badge: "bg-slate-700 text-slate-300" },
   { label: "Enhanced Output", res: "2.5m", tag: "GeoSR-AI", color: "border-blue-electric", badge: "bg-blue-electric/20 text-blue-electric" },
-  { label: "HR Reference", res: "2m", tag: "Ground Truth", color: "border-emerald-signal", badge: "bg-emerald-signal/20 text-emerald-signal" },
 ];
 
 export default function ValidationPage({ objectName }: { objectName: string | null }) {
@@ -87,7 +86,7 @@ export default function ValidationPage({ objectName }: { objectName: string | nu
         </div>
 
         {/* Comparison images */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           {comparisons.map((c, i) => (
             <div key={c.label} className={`rounded-xl overflow-hidden border ${c.color} bg-navy-800`}>
               <div className="relative aspect-video">
