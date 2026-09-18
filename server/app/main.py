@@ -25,6 +25,6 @@ from app.api import projects, upload, super_resolution, assistant, validation, m
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(upload.router, prefix="/api/v1/projects", tags=["upload"])
 app.include_router(super_resolution.router, prefix="/api/v1/projects", tags=["super-resolution"])
-app.include_router(assistant.router, prefix="/api/v1/assistant", tags=["assistant"])
+app.include_router(assistant.router, prefix="/api/v1/projects", tags=["assistant"])
 app.include_router(validation.router, prefix="/api/v1/validation", tags=["validation"])
 app.include_router(map.router, prefix="/api/v1/map", tags=["map"])
