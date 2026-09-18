@@ -48,7 +48,7 @@ export default function App() {
       case "geoassist":
         return <GeoAssistPage />;
       case "projects":
-        return <ProjectsPage />;
+        return <ProjectsPage onNavigate={setPage} />;
       default:
         return <Dashboard onNavigate={setPage} objectName={objectName} setObjectName={setObjectName} />;
     }
