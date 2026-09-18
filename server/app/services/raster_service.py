@@ -34,16 +34,21 @@ class RasterService:
             return {"error": str(e)}
 
     @staticmethod
-    def generate_thumbnail(file_path: str, size: int = 512) -> bytes:
+    def generate_thumbnail(file_path: str, size: int = None) -> bytes:
         from rasterio.enums import Resampling
         from PIL import Image
         import io
         import numpy as np
         try:
             with rasterio.open(file_path) as src:
-                # Decimated read to avoid OOM
+                if size is None:
+                    out_shape = (src.count, src.height, src.width)
+                else:
+                    out_shape = (src.count, size, size)
+                    
+                # Decimated or full read
                 data = src.read(
-                    out_shape=(src.count, size, size),
+                    out_shape=out_shape,
                     resampling=Resampling.bilinear
                 )
                 
@@ -53,10 +58,14 @@ class RasterService:
                 else:
                     rgb = np.repeat(data[0:1, :, :], 3, axis=0)
                     
-                # Normalize to 0-255 uint8
-                if rgb.dtype != np.uint8:
-                    rgb = rgb.astype(np.float32)
-                    rgb = (rgb / rgb.max() * 255.0).astype(np.uint8)
+                # Normalize to 0-255 uint8 using 2nd and 98th percentile for satellite imagery
+                rgb = rgb.astype(np.float32)
+                p2, p98 = np.percentile(rgb, (2, 98))
+                if p98 > p2:
+                    rgb = np.clip((rgb - p2) / (p98 - p2), 0, 1)
+                else:
+                    rgb = np.zeros_like(rgb)
+                rgb = (rgb * 255.0).astype(np.uint8)
                     
                 # Transpose from (C, H, W) to (H, W, C) for Pillow
                 rgb_hwc = np.transpose(rgb, (1, 2, 0))
