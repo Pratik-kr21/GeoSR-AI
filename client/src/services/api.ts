@@ -41,13 +41,19 @@ export const fetchMapBounds = async (projectId: number, objectName: string) => {
   return response.data;
 };
 
+export const fetchInputMapBounds = async (projectId: number, objectName: string) => {
+  const fileId = objectName.split("/").pop();
+  const response = await api.get(`/map/${projectId}/inputs/${fileId}/bounds`);
+  return response.data;
+};
+
 export const checkJobStatus = async (jobId: string) => {
   const response = await api.get(`/projects/jobs/${jobId}`);
   return response.data;
 };
 
 export const fetchValidationMetrics = async (projectId: number) => {
-  const response = await api.get(`/projects/${projectId}/metrics`);
+  const response = await api.get(`/validation/${projectId}/metrics`);
   return response.data;
 };
 
@@ -56,6 +62,11 @@ export const queryGeoAssist = async (projectId: number, message: string) => {
     message,
     project_id: projectId
   });
+  return response.data;
+};
+
+export const listProjects = async () => {
+  const response = await api.get('/projects/');
   return response.data;
 };
 
