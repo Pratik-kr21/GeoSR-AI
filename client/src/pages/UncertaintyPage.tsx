@@ -1,19 +1,42 @@
-import { useState } from "react";
-
-const confidenceData = [
-  { label: "High Confidence", pct: 72, color: "bg-emerald-signal", text: "text-emerald-signal", bar: "from-emerald-signal/20 to-emerald-signal/5" },
-  { label: "Medium Confidence", pct: 21, color: "bg-amber-warn", text: "text-amber-warn", bar: "from-amber-warn/20 to-amber-warn/5" },
-  { label: "Low Confidence", pct: 7, color: "bg-red-alert", text: "text-red-alert", bar: "from-red-alert/20 to-red-alert/5" },
-];
+import { useState, useEffect } from "react";
+import { fetchValidationMetrics } from "../services/api";
 
 export default function UncertaintyPage({ objectName }: { objectName: string | null }) {
   const [showExplanation, setShowExplanation] = useState(false);
+  const [confidenceData, setConfidenceData] = useState([
+    { label: "High Confidence", pct: 0, color: "bg-emerald-signal", text: "text-emerald-signal", bar: "from-emerald-signal/20 to-emerald-signal/5" },
+    { label: "Medium Confidence", pct: 0, color: "bg-amber-warn", text: "text-amber-warn", bar: "from-amber-warn/20 to-amber-warn/5" },
+    { label: "Low Confidence", pct: 0, color: "bg-red-alert", text: "text-red-alert", bar: "from-red-alert/20 to-red-alert/5" },
+  ]);
   
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const metrics = await fetchValidationMetrics(1);
+        const high = Math.round(metrics.avg_confidence * 100);
+        // Synthesize medium/low distributions based on the high confidence score for visualization
+        const low = Math.round((100 - high) * 0.25);
+        const med = 100 - high - low;
+        
+        setConfidenceData([
+          { label: "High Confidence", pct: high, color: "bg-emerald-signal", text: "text-emerald-signal", bar: "from-emerald-signal/20 to-emerald-signal/5" },
+          { label: "Medium Confidence", pct: med, color: "bg-amber-warn", text: "text-amber-warn", bar: "from-amber-warn/20 to-amber-warn/5" },
+          { label: "Low Confidence", pct: low, color: "bg-red-alert", text: "text-red-alert", bar: "from-red-alert/20 to-red-alert/5" },
+        ]);
+      } catch (error) {
+        console.error("Failed to load metrics", error);
+      }
+    };
+    loadData();
+  }, []);
+
   const getOutputThumbnail = () => {
     if (!objectName) return "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=900&h=700&fit=crop&auto=format";
     const fileId = objectName.split("/").pop();
     return `http://localhost:8000/api/v1/map/1/outputs/sr_${fileId}/thumbnail`;
   };
+
+  const displayFilename = objectName ? objectName.split("/").pop() : "No File Uploaded";
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-navy-900">
@@ -21,7 +44,7 @@ export default function UncertaintyPage({ objectName }: { objectName: string | n
       <div className="shrink-0 bg-navy-800 border-b border-navy-500/40 px-6 py-3 flex items-center justify-between">
         <div>
           <h1 className="font-display font-700 text-white text-base">Uncertainty & Confidence Analysis</h1>
-          <p className="text-xs font-mono text-slate-500 mt-0.5">Chandigarh Urban Analysis · Sentinel-2 · 2024-01-15</p>
+          <p className="text-xs font-mono text-slate-500 mt-0.5">{displayFilename} · Sentinel-2</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
           <span className="w-2 h-2 rounded-full bg-emerald-signal" /> High
