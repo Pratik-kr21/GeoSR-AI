@@ -9,7 +9,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![SIH](https://img.shields.io/badge/Smart_India-Hackathon-FF6B35?style=for-the-badge)
 
-**A full-stack AI platform for satellite intelligence. Combines deep learning super-resolution (10m → 2.5m) with multi-layered spectral analytics, change detection, anomaly identification, and a GeoRisk decision indicator.**
+**A full-stack AI platform for satellite intelligence. Combines deep learning super-resolution (10m → 2.5m) with multi-layered spectral analytics, change detection, anomaly identification, and live real-time Sentinel-2 fetching via the Copernicus Sentinel Hub.**
 
 [Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [API Docs](#-api-reference) • [Usage](#-usage-guide)
 
@@ -37,6 +37,7 @@ The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** e
 | ⚠ **GeoRisk Assessment** | Calculates a holistic prototype risk index combining vegetation stress, water stress, anomaly density, and Open-Meteo weather indicators. |
 | 🤖 **Tool-Augmented GeoAssist** | Conversational AI powered by **Ollama** that dynamically fetches real database analytics to interpret satellite anomalies and validation metrics natively. |
 | 🗺️ **Interactive Map Viewer** | React-Leaflet integration with server-side CRS reprojection, percentile-normalized thumbnails, and live analytical heatmap overlays. |
+| ⚡ **Live Sentinel Hub Fetching**| Instantly crop and download live Sentinel-2 4-band imagery for any coordinate using the Copernicus Process API (< 5s download times). |
 | 📦 **Instant ZIP Exports** | Generates sub-second packaged exports containing enhanced GeoTIFFs, metadata, and mock confidence maps for downstream integration. |
 | 🌡️ **Quantitative Validation** | Auto-calculates PSNR, SSIM, Geo-Consistency, and generates pixel-level uncertainty heatmaps for model outputs. |
 | 📁 **Project Management** | Full CRUD lifecycle for projects and observations. Data stored securely in PostgreSQL and S3-compatible MinIO. |
@@ -144,19 +145,22 @@ docker-compose exec backend python seed_dataset.py
 
 ## 🌐 Usage Guide
 
-### 1. Uploading & Enhancing
-1. On the **Dashboard**, click **Upload GeoTIFF** and select your Sentinel-2 `.tif` file.
-2. Click **Run Enhancement** to trigger the PyTorch SRCNN Celery job.
-3. The original (10m) and enhanced (2.5m) layers will appear on the Leaflet map.
+### 1. Live Fetching & Enhancing
+1. On the **Dashboard**, click the **🛰 Fetch Realtime** button to open the live data panel.
+2. Enter coordinates (or click on the map) and click **Fetch Latest Imagery**. 
+   - The backend will instantly crop and download a live 4-band GeoTIFF (Red, Green, Blue, NIR) via the **Copernicus Sentinel Hub Process API**.
+   - **Open-Meteo** live weather data (precipitation, temperature) will also be fetched for that exact coordinate.
+3. Once the raw image appears on the map, you can inspect it.
+4. Click **Enhance Imagery (Super-Resolution)** to trigger the PyTorch SRCNN Celery job. The enhanced (2.5m) layer will overlay onto the map.
 
 ### 2. GeoIntelligence Analytics
 - Navigate to the **Intelligence** page and click **Run Intelligence Analysis**.
 - View **NDVI**, **NDWI**, **Change Metrics**, and a breakdown of **Anomaly Zones**.
-- The analysis utilizes the original 10m Sentinel-2 bands to ensure scientific accuracy, completely separated from the SRCNN outputs.
+- The analysis utilizes the original 10m Sentinel-2 bands (including the dynamically downloaded Near-Infrared `B08` band) to ensure scientific accuracy, completely separated from the SRCNN outputs.
 
 ### 3. Risk Assessment
 - Go to **Risk Analysis** to see the unified **GeoRisk Index**.
-- This index scores out of 100 based on vegetation stress, temporal changes, anomalies, and live **Open-Meteo weather data**.
+- This index scores out of 100 based on vegetation stress, temporal changes, anomalies, and the **live Open-Meteo weather data** acquired during the initial fetch.
 
 ### 4. Temporal Intelligence
 - Use **Change Detection** to contrast two different MinIO objects, surfacing critical spectral shifts and hotspots.
@@ -179,6 +183,7 @@ Base URL: `http://localhost:8000/api/v1`
 | Module | Endpoints |
 |--------|-----------|
 | **Projects & Files** | `GET /projects/`, `POST /projects/`, `POST /upload/{id}` |
+| **Realtime Data** | `POST /realtime/fetch/{id}`, `GET /realtime/latest/{id}` |
 | **Super-Resolution** | `POST /super-resolution/{id}/enhance`, `GET /jobs/{id}/status` |
 | **Intelligence** | `POST /intelligence/{id}/analyze`, `GET /intelligence/{id}/summary` |
 | **Change Detection** | `POST /change-detection/{id}`, `GET /change-detection/{id}` |
