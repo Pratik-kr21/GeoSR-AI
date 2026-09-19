@@ -8,6 +8,7 @@ class SatelliteSRModel(nn.Module):
     """
     def __init__(self, in_channels: int = 3, upscale_factor: int = 4):
         super(SatelliteSRModel, self).__init__()
+        self.upscale_factor = upscale_factor
         
         # Feature extraction
         self.feature_extraction = nn.Sequential(
@@ -24,9 +25,13 @@ class SatelliteSRModel(nn.Module):
         )
         
     def forward(self, x):
+        import torch.nn.functional as F
         # x is expected to be shape [B, C, H, W]
         features = self.feature_extraction(x)
-        out = self.upsample(features)
-        # Residual connection (bicubic upscale of original + learned residual)
-        # For simplicity in this scaffold, we just return the direct upsample output.
+        res = self.upsample(features)
+        
+        # Global Residual Connection: Bicubic upscale of original + learned residual
+        base = F.interpolate(x, scale_factor=self.upscale_factor, mode='bicubic', align_corners=False)
+        out = base + res
+        
         return out
