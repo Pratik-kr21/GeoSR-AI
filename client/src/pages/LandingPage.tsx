@@ -76,9 +76,9 @@ export default function LandingPage({ onNavigate }: { onNavigate: (p: Page) => v
           <span className="font-display font-700 text-white text-lg">GeoSR-AI</span>
         </div>
         <nav className="hidden md:flex items-center gap-6">
-          {["Technology", "Validation", "Documentation"].map((l) => (
-            <a key={l} className="text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer">{l}</a>
-          ))}
+          <button onClick={() => onNavigate("intelligence")} className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Technology</button>
+          <button onClick={() => onNavigate("validation")} className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Validation</button>
+          <a href="https://github.com/Pratik-kr21/GeoSR-AI" target="_blank" rel="noreferrer" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Documentation</a>
         </nav>
         <button
           onClick={() => onNavigate("dashboard")}

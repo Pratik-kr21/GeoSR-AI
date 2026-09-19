@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import ExportModal from "../components/ExportModal";
 import MapViewer from "../components/MapViewer";
 import type { Page } from "../App";
-import { uploadGeoTIFF, triggerSuperResolution, checkJobStatus, fetchValidationMetrics } from "../services/api";
+import { uploadGeoTIFF, triggerSuperResolution, checkJobStatus, fetchValidationMetrics, getIntelligenceSummary } from "../services/api";
 
 const layers = [
   { id: "enhanced", label: "Enhanced Image", color: "bg-blue-electric" },
@@ -48,6 +48,13 @@ export default function Dashboard({
   // Uploaded file info
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Intelligence summary
+  const [intelSummary, setIntelSummary] = useState<any>(null);
+
+  useEffect(() => {
+    getIntelligenceSummary(1).then(setIntelSummary).catch(() => {});
+  }, []);
 
   // Load metrics when enhancement completes
   useEffect(() => {
@@ -136,11 +143,38 @@ export default function Dashboard({
         }
       }, 2000);
       
-    } catch (error) {
+      } catch (error) {
       console.error("SR failed", error);
       setIsRunning(false);
       setStatus("failed");
       alert("Failed to trigger super resolution.");
+    }
+  };
+
+  const [selectedBbox, setSelectedBbox] = useState<[number, number, number, number] | null>(null);
+  
+  const handleFetchGEE = async () => {
+    if (!selectedBbox) return;
+    try {
+      setIsUploading(true);
+      // We don't have api.ts fully typed for this yet, so we'll use raw fetch
+      const res = await fetch('http://localhost:8000/api/v1/projects/1/gee-fetch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ bbox: selectedBbox, max_cloud_cover: 20 })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to fetch from GEE");
+      }
+      alert("GEE Fetch started! The Super Resolution pipeline will trigger automatically when it finishes downloading.");
+      setIsUploading(false);
+      setSelectedBbox(null); // hide the button
+    } catch (e: any) {
+      setIsUploading(false);
+      alert(e.message);
     }
   };
 
@@ -193,11 +227,23 @@ export default function Dashboard({
           >
             {isRunning ? "Running..." : "Run Enhancement"}
           </button>
-          <button
+          {selectedBbox && (
+            <button
+              onClick={handleFetchGEE}
+              disabled={isUploading}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-medium transition-colors shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50"
+            >
+              {isUploading ? "Fetching..." : "Fetch Live from GEE"}
+            </button>
+          )}
+          
+          <button 
             onClick={() => setShowExport(true)}
-            className="px-3 py-1.5 rounded-lg bg-emerald-signal/10 border border-emerald-signal/30 text-xs text-emerald-signal hover:bg-emerald-signal/20 transition-colors"
+            disabled={status !== "completed"}
+            className="px-4 py-2 bg-navy-800 hover:bg-navy-700 text-white border border-navy-700 rounded-md text-sm font-medium transition-colors flex items-center space-x-2 disabled:opacity-50"
           >
-            Export
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <span>Export Report</span>
           </button>
         </div>
       </div>
@@ -207,9 +253,14 @@ export default function Dashboard({
         {/* Map area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Map */}
-          <div className="flex-1 relative overflow-hidden select-none bg-navy-950 grid-bg">
-            <MapViewer activeLayers={activeLayers} isCompleted={status === "completed"} objectName={objectName} />
-          </div>
+          <div className="flex-1 relative border border-navy-800 rounded-lg overflow-hidden shadow-2xl">
+            {/* Map Placeholder or Actual Component */}
+            <MapViewer 
+              activeLayers={activeLayers} 
+              isCompleted={status === "completed"}
+              objectName={objectName}
+              onBboxSelect={(bbox) => setSelectedBbox(bbox)}
+            />  </div>
 
           {/* Layer toggles */}
           <div className="shrink-0 bg-navy-800 border-t border-navy-500/40 px-4 py-2 flex items-center gap-3 flex-wrap">
@@ -229,6 +280,41 @@ export default function Dashboard({
               </button>
             ))}
           </div>
+
+          {/* Intelligence quick-summary strip */}
+          {intelSummary && (
+            <div className="shrink-0 bg-navy-800/60 border-t border-navy-500/30 px-4 py-2 flex items-center gap-4 flex-wrap">
+              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest shrink-0">Intelligence</span>
+              {intelSummary.ndvi_mean !== null && (
+                <span className="text-[11px] font-mono text-emerald-signal">
+                  NDVI {intelSummary.ndvi_mean?.toFixed(3)} · {intelSummary.ndvi_health_class}
+                </span>
+              )}
+              {intelSummary.risk_score !== null && (
+                <span className={`text-[11px] font-mono font-600 ${
+                  intelSummary.risk_score >= 75 ? "text-red-alert" :
+                  intelSummary.risk_score >= 50 ? "text-amber-warn" : "text-emerald-signal"
+                }`}>
+                  GeoRisk {Math.round(intelSummary.risk_score)} · {intelSummary.risk_label}
+                </span>
+              )}
+              {intelSummary.anomaly_count > 0 && (
+                <span className="text-[11px] font-mono text-purple-ai">
+                  {intelSummary.anomaly_count} anomal{intelSummary.anomaly_count === 1 ? "y" : "ies"}
+                </span>
+              )}
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => onNavigate("intelligence")}
+                  className="px-2.5 py-1 rounded text-[10px] font-mono border border-cyan-glow/30 text-cyan-glow hover:bg-cyan-glow/10 transition-colors"
+                >Intelligence →</button>
+                <button
+                  onClick={() => onNavigate("risk-analysis")}
+                  className="px-2.5 py-1 rounded text-[10px] font-mono border border-amber-warn/30 text-amber-warn hover:bg-amber-warn/10 transition-colors"
+                >Risk Analysis →</button>
+              </div>
+            </div>
+          )}
 
           {/* Metrics row — dynamic from API */}
           <div className="shrink-0 bg-navy-800/80 border-t border-navy-500/30 px-4 py-3 grid grid-cols-5 gap-3">

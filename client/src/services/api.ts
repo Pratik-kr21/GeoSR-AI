@@ -70,4 +70,52 @@ export const listProjects = async () => {
   return response.data;
 };
 
+// ─── New Intelligence API Functions ───────────────────────────────────────────
+
+export const analyzeIntelligence = async (projectId: number, objectName: string) => {
+  const response = await api.post(`/intelligence/${projectId}/analyze`, null, {
+    params: { object_name: objectName },
+    timeout: 120000, // analysis can take time
+  });
+  return response.data;
+};
+
+export const getIntelligenceSummary = async (projectId: number) => {
+  const response = await api.get(`/intelligence/${projectId}/summary`);
+  return response.data;
+};
+
+export const getSpectralIndices = async (projectId: number) => {
+  const response = await api.get(`/intelligence/${projectId}/indices`);
+  return response.data;
+};
+
+export const runChangeDetection = async (
+  projectId: number,
+  beforeObjectName: string,
+  afterObjectName: string
+) => {
+  const response = await api.post(`/change-detection/${projectId}`, {
+    before_object_name: beforeObjectName,
+    after_object_name: afterObjectName,
+  });
+  return response.data;
+};
+
+export const getChangeDetection = async (projectId: number) => {
+  const response = await api.get(`/change-detection/${projectId}`);
+  return response.data;
+};
+
+export const getAnomalies = async (projectId: number) => {
+  const response = await api.get(`/anomalies/${projectId}`);
+  return response.data;
+};
+
+export const getRiskAssessment = async (projectId: number) => {
+  const response = await api.get(`/risk/${projectId}`);
+  return response.data;
+};
+
 export default api;
+

@@ -1,7 +1,61 @@
 import { useEffect, useState } from "react";
+import L from "leaflet";
 import { MapContainer, TileLayer, LayersControl, useMap, ImageOverlay, Pane } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet-draw/dist/leaflet.draw.css";
+import "leaflet-draw";
 import { fetchMapBounds, fetchInputMapBounds } from "../services/api";
+
+// Fix Leaflet draw icons if needed (optional, depends on setup)
+(window as any).type = '';
+
+// Custom Native Leaflet Draw Component
+const DrawControl = ({ onBboxSelect }: { onBboxSelect: (bbox: [number, number, number, number]) => void }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    
+    const drawControl = new (L.Control as any).Draw({
+      position: 'topleft',
+      draw: {
+        rectangle: true,
+        polygon: false,
+        circle: false,
+        circlemarker: false,
+        marker: false,
+        polyline: false,
+      },
+      edit: {
+        featureGroup: drawnItems,
+        edit: false,
+        remove: true,
+      }
+    });
+    
+    map.addControl(drawControl);
+    
+    map.on((L.Draw as any).Event.CREATED, (e: any) => {
+      const layer = e.layer;
+      drawnItems.clearLayers();
+      drawnItems.addLayer(layer);
+      
+      if (e.layerType === 'rectangle') {
+        const bounds = layer.getBounds();
+        onBboxSelect([bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]);
+      }
+    });
+    
+    return () => {
+      map.removeControl(drawControl);
+      map.removeLayer(drawnItems);
+      map.off((L.Draw as any).Event.CREATED);
+    };
+  }, [map, onBboxSelect]);
+  
+  return null;
+};
 
 // Utility to handle map resizing dynamically
 const MapResizer = () => {
@@ -23,7 +77,7 @@ const BoundsFitter = ({ bounds }: { bounds: [[number, number], [number, number]]
   return null;
 };
 
-export default function MapViewer({ activeLayers, isCompleted, objectName }: { activeLayers: Set<string>, isCompleted: boolean, objectName: string | null }) {
+export default function MapViewer({ activeLayers, isCompleted, objectName, onBboxSelect }: { activeLayers: Set<string>, isCompleted: boolean, objectName: string | null, onBboxSelect?: (bbox: [number, number, number, number]) => void }) {
   const center: [number, number] = [30.7333, 76.7794];
   const [inputBounds, setInputBounds] = useState<[[number, number], [number, number]] | null>(null);
   const [outputBounds, setOutputBounds] = useState<[[number, number], [number, number]] | null>(null);
@@ -66,6 +120,8 @@ export default function MapViewer({ activeLayers, isCompleted, objectName }: { a
         <MapResizer />
         {inputBounds && <BoundsFitter bounds={inputBounds} />}
         
+        {onBboxSelect && <DrawControl onBboxSelect={onBboxSelect} />}
+
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Satellite Base (Esri)">
             <TileLayer

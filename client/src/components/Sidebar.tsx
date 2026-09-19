@@ -1,14 +1,14 @@
 import type { Page } from "../App";
 
-const navItems: { id: Page; label: string; icon: string }[] = [
+const navItems: { id: Page; label: string; icon: string; badge?: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "⬡" },
-  { id: "new-analysis", label: "New Analysis", icon: "＋" },
   { id: "projects", label: "Projects", icon: "◫" },
-  { id: "imagery", label: "Satellite Imagery", icon: "◉" },
+  { id: "intelligence", label: "Intelligence", icon: "◈", badge: "NEW" },
+  { id: "timeline", label: "Timeline", icon: "◷" },
+  { id: "change-detection", label: "Change Detection", icon: "⇌" },
+  { id: "risk-analysis", label: "Risk Analysis", icon: "⚠" },
   { id: "validation", label: "Validation", icon: "◈" },
-  { id: "reports", label: "Reports", icon: "▣" },
-  { id: "geoassist", label: "GeoAssist AI", icon: "◎" },
-  { id: "settings", label: "Settings", icon: "⊛" },
+  { id: "geoassist", label: "GeoAssist AI", icon: "◎", badge: "AI" },
 ];
 
 export default function Sidebar({
@@ -23,12 +23,13 @@ export default function Sidebar({
       {/* Logo */}
       <div className="px-3 lg:px-4 py-5 border-b border-navy-500/40">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-blue-electric flex items-center justify-center text-white font-display font-bold text-sm glow-blue shrink-0">
-            G
-          </div>
+          <img 
+            src="/logo.jpg" 
+            alt="GeoSR-AI Logo" 
+            className="w-8 h-8 rounded shrink-0 object-contain shadow-lg shadow-blue-electric/20" 
+          />
           <div className="hidden lg:block">
             <div className="font-display font-700 text-sm text-white leading-none">GeoSR-AI</div>
-            <div className="text-[10px] text-navy-400 font-mono mt-0.5">v2.1.0 · PROD</div>
           </div>
         </div>
       </div>
@@ -51,9 +52,13 @@ export default function Sidebar({
                 {item.icon}
               </span>
               <span className="hidden lg:block text-sm font-medium">{item.label}</span>
-              {item.id === "geoassist" && (
-                <span className="hidden lg:block ml-auto text-[9px] font-mono px-1 py-0.5 rounded bg-purple-ai/20 text-purple-ai border border-purple-ai/30">
-                  AI
+              {item.badge && (
+                <span className={`hidden lg:block ml-auto text-[9px] font-mono px-1 py-0.5 rounded border ${
+                  item.badge === "AI"
+                    ? "bg-purple-ai/20 text-purple-ai border-purple-ai/30"
+                    : "bg-cyan-glow/20 text-cyan-glow border-cyan-glow/30"
+                }`}>
+                  {item.badge}
                 </span>
               )}
             </button>

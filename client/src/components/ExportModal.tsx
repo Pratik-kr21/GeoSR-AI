@@ -1,12 +1,11 @@
 import { useState } from "react";
 
 const exportOptions = [
-  { id: "geotiff", label: "Enhanced GeoTIFF", desc: "4× super-resolved output with preserved CRS" },
-  { id: "metrics", label: "Validation Metrics", desc: "PSNR, SSIM, LPIPS, SAM, Edge Accuracy scores" },
+  { id: "package", label: "Full Analysis Package (ZIP)", desc: "Includes Enhanced GeoTIFF, Confidence Map, Preview Image, JSON Metrics, and Provenance." },
 ];
 
 export default function ExportModal({ onClose, objectName }: { onClose: () => void; objectName: string | null }) {
-  const [selected, setSelected] = useState(new Set(["geotiff", "metrics"]));
+  const [selected, setSelected] = useState(new Set(["package"]));
   const [generating, setGenerating] = useState(false);
 
   const toggle = (id: string) => {
@@ -24,35 +23,22 @@ export default function ExportModal({ onClose, objectName }: { onClose: () => vo
     }
     
     setGenerating(true);
-    const fileId = objectName.split("/").pop();
     
     try {
-      if (selected.has("geotiff")) {
-        // Download the enhanced GeoTIFF thumbnail as JPEG (the full TIFF is in MinIO)
-        const url = `http://localhost:8000/api/v1/map/1/outputs/sr_${fileId}/thumbnail`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Enhanced file not found. Run enhancement first.");
-        const blob = await response.blob();
+      if (selected.has("package")) {
+        // Trigger the backend to build and stream the ZIP package
+        const url = `http://localhost:8000/api/v1/export/1/package?object_name=${encodeURIComponent(objectName)}`;
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `enhanced_sr_${fileId?.replace('.tif', '.jpg')}`;
+        link.href = url;
+        link.download = "export.zip"; // Actual filename is handled by Content-Disposition header
         link.click();
-        URL.revokeObjectURL(link.href);
       }
       
-      if (selected.has("metrics")) {
-        const response = await fetch(`http://localhost:8000/api/v1/validation/1/metrics`);
-        if (!response.ok) throw new Error("Metrics not available.");
-        const metrics = await response.json();
-        const blob = new Blob([JSON.stringify(metrics, null, 2)], { type: "application/json" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `validation_metrics_${fileId?.replace('.tif', '.json')}`;
-        link.click();
-        URL.revokeObjectURL(link.href);
-      }
+      // Delay closing to show user something happened
+      setTimeout(() => {
+        onClose();
+      }, 1500);
       
-      onClose();
     } catch (error) {
       alert(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {

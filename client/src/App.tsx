@@ -6,20 +6,24 @@ import UncertaintyPage from "./pages/UncertaintyPage";
 import ValidationPage from "./pages/ValidationPage";
 import GeoAssistPage from "./pages/GeoAssistPage";
 import ProjectsPage from "./pages/ProjectsPage";
+import IntelligencePage from "./pages/IntelligencePage";
+import ChangeDetectionPage from "./pages/ChangeDetectionPage";
+import RiskAnalysisPage from "./pages/RiskAnalysisPage";
+import TimelinePage from "./pages/TimelinePage";
 
 export type Page =
   | "landing"
   | "dashboard"
-  | "new-analysis"
   | "projects"
-  | "imagery"
   | "validation"
-  | "reports"
   | "geoassist"
-  | "settings"
-  | "uncertainty";
+  | "uncertainty"
+  | "intelligence"
+  | "change-detection"
+  | "risk-analysis"
+  | "timeline";
 
-const APP_PAGES: Page[] = ["dashboard", "new-analysis", "projects", "imagery", "validation", "reports", "geoassist", "settings"];
+const APP_PAGES: Page[] = ["dashboard", "projects", "validation", "geoassist", "intelligence", "change-detection", "risk-analysis", "timeline"];
 
 export default function App() {
   const [page, setPage] = useState<Page>("landing");
@@ -36,10 +40,6 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "dashboard":
-      case "new-analysis":
-      case "imagery":
-      case "reports":
-      case "settings":
         return <Dashboard onNavigate={setPage} objectName={objectName} setObjectName={setObjectName} />;
       case "uncertainty":
         return <UncertaintyPage objectName={objectName} />;
@@ -49,6 +49,14 @@ export default function App() {
         return <GeoAssistPage />;
       case "projects":
         return <ProjectsPage onNavigate={setPage} />;
+      case "intelligence":
+        return <IntelligencePage objectName={objectName} onNavigate={setPage} />;
+      case "change-detection":
+        return <ChangeDetectionPage />;
+      case "risk-analysis":
+        return <RiskAnalysisPage onNavigate={setPage} />;
+      case "timeline":
+        return <TimelinePage />;
       default:
         return <Dashboard onNavigate={setPage} objectName={objectName} setObjectName={setObjectName} />;
     }

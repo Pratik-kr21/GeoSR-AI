@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { queryGeoAssist, fetchValidationMetrics } from "../services/api";
+import { queryGeoAssist, fetchValidationMetrics, getIntelligenceSummary, getRiskAssessment } from "../services/api";
 
 const suggestions = [
-  "Explain validation results",
-  "Analyze uncertainty hotspots",
-  "What does SAM score mean?",
-  "Compare original vs enhanced image",
-  "Generate analysis report",
+  "Why is the GeoRisk score high?",
+  "Explain the vegetation stress anomalies",
+  "How has NDVI changed over time?",
+  "What does the current NDWI indicate?",
+  "Explain the current satellite analysis",
+  "Which areas show the most change?",
+  "What are the major detected anomalies?",
 ];
 
 const initialMessages = [
@@ -26,24 +28,42 @@ export default function GeoAssistPage() {
     { label: "Enhanced Resolution", value: "2.5m" },
     { label: "PSNR", value: "—" },
     { label: "SSIM", value: "—" },
-    { label: "Avg Confidence", value: "—" },
-    { label: "Geo-Consistency", value: "—" },
+    { label: "GeoRisk Index", value: "—" },
+    { label: "NDVI Mean", value: "—" },
+    { label: "Anomalies", value: "—" },
   ]);
 
   useEffect(() => {
-    fetchValidationMetrics(1)
-      .then((m) => {
-        setContextData([
-          { label: "Input", value: "Sentinel-2 GeoTIFF" },
-          { label: "Input Resolution", value: "10m" },
-          { label: "Enhanced Resolution", value: "2.5m" },
-          { label: "PSNR", value: `${m.psnr} dB` },
-          { label: "SSIM", value: `${m.ssim}` },
-          { label: "Avg Confidence", value: `${Math.round(m.avg_confidence * 100)}%` },
-          { label: "Geo-Consistency", value: `${Math.round(m.geo_consistency * 100)}%` },
-        ]);
-      })
-      .catch(() => {});
+    const base = [
+      { label: "Input", value: "Sentinel-2 GeoTIFF" },
+      { label: "Input Resolution", value: "10m" },
+      { label: "Enhanced Resolution", value: "2.5m" },
+    ];
+
+    Promise.allSettled([
+      fetchValidationMetrics(1),
+      getIntelligenceSummary(1),
+      getRiskAssessment(1),
+    ]).then(([valRes, intelRes, riskRes]) => {
+      const ctx = [...base];
+      if (valRes.status === "fulfilled") {
+        const m = valRes.value;
+        ctx.push({ label: "PSNR", value: `${m.psnr} dB` });
+        ctx.push({ label: "SSIM", value: `${m.ssim}` });
+      }
+      if (intelRes.status === "fulfilled") {
+        const s = intelRes.value;
+        if (s.ndvi_mean !== null) ctx.push({ label: "NDVI Mean", value: s.ndvi_mean.toFixed(3) });
+        if (s.ndwi_mean !== null) ctx.push({ label: "NDWI Mean", value: s.ndwi_mean.toFixed(3) });
+        if (s.anomaly_count > 0) ctx.push({ label: "Anomalies", value: `${s.anomaly_count}` });
+      }
+      if (riskRes.status === "fulfilled") {
+        const r = riskRes.value;
+        ctx.push({ label: "GeoRisk Index", value: `${Math.round(r.score)} · ${r.label}` });
+        ctx.push({ label: "Risk Confidence", value: `${Math.round((r.confidence ?? 0) * 100)}%` });
+      }
+      setContextData(ctx);
+    });
   }, []);
 
   const send = async (text: string) => {
