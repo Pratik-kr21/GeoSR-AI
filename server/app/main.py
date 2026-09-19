@@ -39,3 +39,7 @@ app.include_router(change_detection.router, prefix="/api/v1/change-detection", t
 app.include_router(anomalies.router, prefix="/api/v1/anomalies", tags=["anomalies"])
 app.include_router(risk.router, prefix="/api/v1/risk", tags=["risk"])
 app.include_router(export.router, prefix="/api/v1/export", tags=["export"])
+
+# ─── Real-time satellite data (CDSE + Open-Meteo) ──────────────────────────────
+from app.api import realtime
+app.include_router(realtime.router, prefix="/api/v1/realtime", tags=["realtime"])
