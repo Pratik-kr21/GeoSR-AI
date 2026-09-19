@@ -39,9 +39,10 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 # ─── Request / Response schemas ────────────────────────────────────────────────
 
 class RealtimeFetchRequest(BaseModel):
-    latitude: float  = Field(..., ge=-90, le=90,   description="Centre latitude in decimal degrees.")
-    longitude: float = Field(..., ge=-180, le=180,  description="Centre longitude in decimal degrees.")
-    buffer_km: float = Field(5.0, ge=0.5, le=100,  description="Search radius around centre in kilometres.")
+    latitude: Optional[float] = Field(None, ge=-90, le=90, description="Centre latitude in decimal degrees.")
+    longitude: Optional[float] = Field(None, ge=-180, le=180, description="Centre longitude in decimal degrees.")
+    buffer_km: Optional[float] = Field(5.0, ge=0.5, le=100, description="Search radius around centre in kilometres.")
+    bbox: Optional[list[float]] = Field(None, description="Bounding box [minLon, minLat, maxLon, maxLat]. Overrides lat/lon/buffer.")
     days_back: int   = Field(30,  ge=1,   le=365,  description="How many days into the past to search.")
     max_cloud_cover: int = Field(20, ge=0, le=100,  description="Maximum acceptable cloud cover percentage.")
 
@@ -109,6 +110,7 @@ async def _fetch_upload_create_observation(
                 lat=req.latitude,
                 lon=req.longitude,
                 buffer_km=req.buffer_km,
+                bbox=req.bbox,
                 days_back=req.days_back,
                 max_cloud_cover=req.max_cloud_cover,
             )
@@ -157,7 +159,10 @@ async def _fetch_upload_create_observation(
         pass
 
     # 3. Fetch weather (non-blocking, always succeeds)
-    weather = await realtime_service.fetch_weather_data(req.latitude, req.longitude)
+    # If using bbox, use center for weather
+    w_lat = req.latitude if req.latitude is not None else ((req.bbox[1] + req.bbox[3]) / 2 if req.bbox else 0)
+    w_lon = req.longitude if req.longitude is not None else ((req.bbox[0] + req.bbox[2]) / 2 if req.bbox else 0)
+    weather = await realtime_service.fetch_weather_data(w_lat, w_lon)
 
     # 4. Extract raster metadata for the Observation record
     # We need to read it from MinIO — download to a quick temp path

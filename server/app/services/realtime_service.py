@@ -49,19 +49,23 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _build_wkt_bbox(lat: float, lon: float, buffer_km: float) -> str:
+def _build_wkt_bbox(lat: Optional[float], lon: Optional[float], buffer_km: Optional[float], bbox: Optional[List[float]] = None) -> str:
     """
     Build a WKT POLYGON string representing a square bounding box
-    around (lat, lon) with the given buffer radius in kilometres.
+    around (lat, lon) with the given buffer radius in kilometres,
+    or from a direct bounding box [west, south, east, north].
     Uses approximate degree conversion (1 deg lat ≈ 111 km).
     """
-    delta_lat = buffer_km / 111.0
-    delta_lon = buffer_km / (111.0 * math.cos(math.radians(lat)))
+    if bbox is not None:
+        west, south, east, north = bbox
+    else:
+        delta_lat = buffer_km / 111.0
+        delta_lon = buffer_km / (111.0 * math.cos(math.radians(lat)))
 
-    west  = lon - delta_lon
-    east  = lon + delta_lon
-    south = lat - delta_lat
-    north = lat + delta_lat
+        west  = lon - delta_lon
+        east  = lon + delta_lon
+        south = lat - delta_lat
+        north = lat + delta_lat
 
     # Clamp to valid WGS-84 bounds
     west  = max(-180.0, west)
@@ -176,7 +180,7 @@ def _extract_product_metadata(product: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _fetch_sentinelhub_crop(lat: float, lon: float, buffer_km: float, date: str, token: str, output_dir: str) -> str:
+def _fetch_sentinelhub_crop(lat: Optional[float], lon: Optional[float], buffer_km: Optional[float], date: str, token: str, output_dir: str, bbox: Optional[List[float]] = None) -> str:
     """
     Use Sentinel Hub Process API to fetch a fast cropped GeoTIFF for the exact area.
     """
@@ -187,10 +191,10 @@ def _fetch_sentinelhub_crop(lat: float, lon: float, buffer_km: float, date: str,
         "Content-Type": "application/json"
     }
 
-    # ~2km bounding box
-    lat_diff = buffer_km / 111.0
-    lon_diff = buffer_km / (111.0 * math.cos(math.radians(lat)))
-    bbox = [lon - lon_diff, lat - lat_diff, lon + lon_diff, lat + lat_diff]
+    if bbox is None:
+        lat_diff = buffer_km / 111.0
+        lon_diff = buffer_km / (111.0 * math.cos(math.radians(lat)))
+        bbox = [lon - lon_diff, lat - lat_diff, lon + lon_diff, lat + lat_diff]
 
     # Extract just YYYY-MM-DD from the datetime string or object
     date_str = str(date)
@@ -264,9 +268,10 @@ class RealtimeService:
 
     def fetch_sentinel2_geotiff(
         self,
-        lat: float,
-        lon: float,
-        buffer_km: float = 5.0,
+        lat: Optional[float] = None,
+        lon: Optional[float] = None,
+        buffer_km: Optional[float] = 5.0,
+        bbox: Optional[List[float]] = None,
         days_back: int = 30,
         max_cloud_cover: int = 20,
     ) -> Tuple[str, Optional[datetime], float, List[float]]:
@@ -293,15 +298,23 @@ class RealtimeService:
             RuntimeError: If CDSE credentials are missing, auth fails,
                           no scene is found, or download fails.
         """
-        # Validate coordinates
-        if not (-90 <= lat <= 90):
-            raise ValueError(f"Latitude {lat} is out of range (-90 to 90).")
-        if not (-180 <= lon <= 180):
-            raise ValueError(f"Longitude {lon} is out of range (-180 to 180).")
+        # Validate coordinates if using point
+        if bbox is None:
+            if lat is None or lon is None:
+                raise ValueError("Must provide either a bounding box (bbox) or lat/lon center point.")
+            if not (-90 <= lat <= 90):
+                raise ValueError(f"Latitude {lat} is out of range (-90 to 90).")
+            if not (-180 <= lon <= 180):
+                raise ValueError(f"Longitude {lon} is out of range (-180 to 180).")
+            center_lat, center_lon = lat, lon
+        else:
+            center_lon = (bbox[0] + bbox[2]) / 2
+            center_lat = (bbox[1] + bbox[3]) / 2
 
-        wkt = _build_wkt_bbox(lat, lon, buffer_km)
-        logger.info(f"Searching CDSE for Sentinel-2 scenes over ({lat}, {lon}), "
-                    f"buffer={buffer_km}km, days_back={days_back}, cloud<{max_cloud_cover}%")
+        wkt = _build_wkt_bbox(lat, lon, buffer_km, bbox)
+        logger.info(f"Searching CDSE for Sentinel-2 scenes over "
+                    f"{'bbox=' + str(bbox) if bbox else f'({lat}, {lon})'}, "
+                    f"days_back={days_back}, cloud<{max_cloud_cover}%")
 
         # 1. Search catalog (no auth needed for catalog)
         product = _search_cdse_catalog(wkt, days_back, max_cloud_cover)
@@ -318,16 +331,16 @@ class RealtimeService:
 
         # 2. Authenticate and download using Sentinel Hub Process API
         token = _get_cdse_token()
-        local_path = _fetch_sentinelhub_crop(lat, lon, buffer_km, meta["acquisition_date"], token, TEMP_DIR)
+        local_path = _fetch_sentinelhub_crop(lat, lon, buffer_km, meta["acquisition_date"], token, TEMP_DIR, bbox)
 
         # 3. Extract actual bounds from the downloaded TIF
-        bounds = self._read_tif_bounds(local_path, lat, lon, buffer_km)
+        bounds = self._read_tif_bounds(local_path, center_lat, center_lon, buffer_km if bbox is None else 0, bbox)
 
         return local_path, meta["acquisition_date"], meta["cloud_cover"], bounds
 
     @staticmethod
     def _read_tif_bounds(
-        tif_path: str, fallback_lat: float, fallback_lon: float, buffer_km: float
+        tif_path: str, fallback_lat: float, fallback_lon: float, buffer_km: float, fallback_bbox: Optional[List[float]] = None
     ) -> List[float]:
         """Extract [west, south, east, north] bounds from a GeoTIFF using rasterio."""
         try:
@@ -347,6 +360,8 @@ class RealtimeService:
                 ]
         except Exception as e:
             logger.warning(f"Could not read TIF bounds ({e}), using approximate bbox.")
+            if fallback_bbox:
+                return [round(b, 6) for b in fallback_bbox]
             delta_lat = buffer_km / 111.0
             delta_lon = buffer_km / (111.0 * math.cos(math.radians(fallback_lat)))
             return [
@@ -425,9 +440,10 @@ class RealtimeService:
 
     async def get_latest_available_scene(
         self,
-        lat: float,
-        lon: float,
-        buffer_km: float = 5.0,
+        lat: Optional[float] = None,
+        lon: Optional[float] = None,
+        buffer_km: Optional[float] = 5.0,
+        bbox: Optional[List[float]] = None,
         days_back: int = 30,
         max_cloud_cover: int = 20,
     ) -> Dict[str, Any]:
@@ -438,14 +454,17 @@ class RealtimeService:
         Does NOT download the full GeoTIFF — only checks catalog availability.
         Use fetch_sentinel2_geotiff() when you actually want the file.
         """
-        wkt = _build_wkt_bbox(lat, lon, buffer_km)
+        wkt = _build_wkt_bbox(lat, lon, buffer_km, bbox)
 
         # Run catalog search and weather fetch concurrently
+        center_lat = lat if lat is not None else ((bbox[1] + bbox[3]) / 2 if bbox else 0)
+        center_lon = lon if lon is not None else ((bbox[0] + bbox[2]) / 2 if bbox else 0)
+
         loop = asyncio.get_event_loop()
         product_future = loop.run_in_executor(
             None, _search_cdse_catalog, wkt, days_back, max_cloud_cover
         )
-        weather_future = self.fetch_weather_data(lat, lon)
+        weather_future = self.fetch_weather_data(center_lat, center_lon)
 
         product, weather = await asyncio.gather(product_future, weather_future)
 
@@ -461,8 +480,17 @@ class RealtimeService:
             }
 
         meta = _extract_product_metadata(product)
-        delta_lat = buffer_km / 111.0
-        delta_lon = buffer_km / (111.0 * math.cos(math.radians(lat)))
+        if bbox is not None:
+            approximate_bounds = bbox
+        else:
+            delta_lat = buffer_km / 111.0
+            delta_lon = buffer_km / (111.0 * math.cos(math.radians(center_lat)))
+            approximate_bounds = [
+                round(center_lon - delta_lon, 4),
+                round(center_lat - delta_lat, 4),
+                round(center_lon + delta_lon, 4),
+                round(center_lat + delta_lat, 4),
+            ]
 
         return {
             "found": True,
@@ -471,12 +499,7 @@ class RealtimeService:
             "acquisition_date": meta["acquisition_date"].isoformat() if meta["acquisition_date"] else None,
             "cloud_cover": meta["cloud_cover"],
             "size_mb": meta["size_mb"],
-            "approximate_bounds": [
-                round(lon - delta_lon, 4),
-                round(lat - delta_lat, 4),
-                round(lon + delta_lon, 4),
-                round(lat + delta_lat, 4),
-            ],
+            "approximate_bounds": approximate_bounds,
             "weather": weather,
             "cdse_enabled": settings.CDSE_ENABLED,
         }

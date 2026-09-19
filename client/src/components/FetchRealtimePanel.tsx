@@ -35,6 +35,8 @@ interface Props {
   /** If provided, pre-fills the lat/lon fields (e.g. from map click). */
   pickedLat?: number | null;
   pickedLon?: number | null;
+  /** If provided, pre-fills the bounding box (e.g. from map draw). */
+  pickedBbox?: [number, number, number, number] | null;
   /** Called when a scene is successfully fetched — so Dashboard can update the map. */
   onFetchSuccess?: (result: RealtimeFetchResult) => void;
   /** Called when fetch+process completes so Dashboard can start polling the SR job. */
@@ -123,6 +125,7 @@ export default function FetchRealtimePanel({
   projectId,
   pickedLat,
   pickedLon,
+  pickedBbox,
   onFetchSuccess,
   onProcessStarted,
 }: Props) {
@@ -132,6 +135,8 @@ export default function FetchRealtimePanel({
   const [bufferKm, setBufferKm] = useState(5);
   const [daysBack, setDaysBack] = useState(30);
   const [maxCloud, setMaxCloud] = useState(20);
+  
+  const [selectionMode, setSelectionMode] = useState<"point" | "area">("point");
 
   // Capability state
   const [cdseEnabled, setCdseEnabled] = useState<boolean | null>(null);
@@ -145,9 +150,22 @@ export default function FetchRealtimePanel({
 
   // Pre-fill lat/lon when map pick changes
   useEffect(() => {
-    if (pickedLat != null) setLat(pickedLat.toFixed(6));
-    if (pickedLon != null) setLon(pickedLon.toFixed(6));
+    if (pickedLat != null) {
+      setLat(pickedLat.toFixed(6));
+      setSelectionMode("point");
+    }
+    if (pickedLon != null) {
+      setLon(pickedLon.toFixed(6));
+      setSelectionMode("point");
+    }
   }, [pickedLat, pickedLon]);
+
+  // Set area mode when bbox changes
+  useEffect(() => {
+    if (pickedBbox != null) {
+      setSelectionMode("area");
+    }
+  }, [pickedBbox]);
 
   // Check CDSE status on mount
   useEffect(() => {
@@ -165,6 +183,14 @@ export default function FetchRealtimePanel({
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const validateCoords = (): RealtimeFetchParams | null => {
+    if (selectionMode === "area" && pickedBbox) {
+      return {
+        bbox: pickedBbox,
+        days_back: daysBack,
+        max_cloud_cover: maxCloud,
+      };
+    }
+
     const latN = parseFloat(lat);
     const lonN = parseFloat(lon);
     if (isNaN(latN) || latN < -90 || latN > 90) {
@@ -385,32 +411,50 @@ export default function FetchRealtimePanel({
       )}
 
       {/* Coordinate Inputs */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-xs text-slate-400 mb-1 block">Latitude</label>
-          <input
-            type="number"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            min={-90} max={90} step={0.0001}
-            disabled={isBusy}
-            className="w-full bg-navy-800 border border-navy-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-            placeholder="e.g. 28.6139"
-          />
+      {selectionMode === "area" && pickedBbox ? (
+        <div className="bg-navy-800/60 border border-navy-600/40 rounded-lg p-3 text-xs text-slate-300">
+          <div className="text-cyan-400 font-medium mb-1">Selected Area (Bounding Box)</div>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+            <span className="text-slate-500">Min Lon:</span> <span>{pickedBbox[0].toFixed(5)}</span>
+            <span className="text-slate-500">Min Lat:</span> <span>{pickedBbox[1].toFixed(5)}</span>
+            <span className="text-slate-500">Max Lon:</span> <span>{pickedBbox[2].toFixed(5)}</span>
+            <span className="text-slate-500">Max Lat:</span> <span>{pickedBbox[3].toFixed(5)}</span>
+          </div>
+          <button
+            onClick={() => setSelectionMode("point")}
+            className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 underline"
+          >
+            Switch back to Point mode
+          </button>
         </div>
-        <div>
-          <label className="text-xs text-slate-400 mb-1 block">Longitude</label>
-          <input
-            type="number"
-            value={lon}
-            onChange={(e) => setLon(e.target.value)}
-            min={-180} max={180} step={0.0001}
-            disabled={isBusy}
-            className="w-full bg-navy-800 border border-navy-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-            placeholder="e.g. 77.2090"
-          />
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Latitude</label>
+            <input
+              type="number"
+              value={lat}
+              onChange={(e) => { setLat(e.target.value); setSelectionMode("point"); }}
+              min={-90} max={90} step={0.0001}
+              disabled={isBusy}
+              className="w-full bg-navy-800 border border-navy-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              placeholder="e.g. 28.6139"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Longitude</label>
+            <input
+              type="number"
+              value={lon}
+              onChange={(e) => { setLon(e.target.value); setSelectionMode("point"); }}
+              min={-180} max={180} step={0.0001}
+              disabled={isBusy}
+              className="w-full bg-navy-800 border border-navy-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              placeholder="e.g. 77.2090"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Advanced Options */}
       <div className="flex flex-col gap-3 text-xs mt-1">
@@ -418,11 +462,11 @@ export default function FetchRealtimePanel({
           <div>
             <label className="text-slate-400 mb-1 flex justify-between">
               <span>Search radius</span>
-              <span className="text-white">{bufferKm}km</span>
+              <span className="text-white">{selectionMode === "area" ? "—" : `${bufferKm}km`}</span>
             </label>
             <input type="range" min={1} max={50} value={bufferKm}
-              onChange={(e) => setBufferKm(+e.target.value)} disabled={isBusy}
-              className="w-full accent-blue-500 disabled:opacity-50" />
+              onChange={(e) => setBufferKm(+e.target.value)} disabled={isBusy || selectionMode === "area"}
+              className={`w-full accent-blue-500 ${selectionMode === "area" ? "opacity-30" : "disabled:opacity-50"}`} />
           </div>
           <div>
             <label className="text-slate-400 mb-1 flex justify-between">

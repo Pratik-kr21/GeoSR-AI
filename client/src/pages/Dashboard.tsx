@@ -62,6 +62,7 @@ export default function Dashboard({
   const [pickMode, setPickMode] = useState(false);
   const [pickedLat, setPickedLat] = useState<number | null>(null);
   const [pickedLon, setPickedLon] = useState<number | null>(null);
+  const [realtimeBbox, setRealtimeBbox] = useState<[number, number, number, number] | null>(null);
   const [acquisitionDate, setAcquisitionDate] = useState<string | null>(null);
 
   const handleRealtimeFetchSuccess = (result: RealtimeFetchResult) => {
@@ -338,11 +339,15 @@ export default function Dashboard({
               activeLayers={activeLayers} 
               isCompleted={status === "completed"}
               objectName={objectName}
-              onBboxSelect={inputMode === "upload" ? (bbox) => setSelectedBbox(bbox) : undefined}
+              onBboxSelect={(bbox) => {
+                if (inputMode === "upload") setSelectedBbox(bbox);
+                else setRealtimeBbox(bbox);
+              }}
               pickMode={inputMode === "realtime" && pickMode}
-              onLocationPick={(lat, lon) => { setPickedLat(lat); setPickedLon(lon); }}
+              onLocationPick={(lat, lon) => { setPickedLat(lat); setPickedLon(lon); setRealtimeBbox(null); }}
               realtimeBounds={realtimeBounds}
-            />  </div>
+            />
+          </div>
 
           {/* Layer toggles */}
           <div className="shrink-0 bg-navy-800 border-t border-navy-500/40 px-4 py-2 flex items-center gap-3 flex-wrap">
@@ -458,6 +463,7 @@ export default function Dashboard({
                 projectId={1}
                 pickedLat={pickedLat}
                 pickedLon={pickedLon}
+                pickedBbox={realtimeBbox}
                 onFetchSuccess={handleRealtimeFetchSuccess}
                 onProcessStarted={handleRealtimeProcessStarted}
               />

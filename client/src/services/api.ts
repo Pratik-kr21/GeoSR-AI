@@ -120,9 +120,10 @@ export const getRiskAssessment = async (projectId: number) => {
 // ─── Real-Time Satellite Data (CDSE + Open-Meteo) API Functions ───────────────
 
 export interface RealtimeFetchParams {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   buffer_km?: number;    // default 5
+  bbox?: [number, number, number, number];
   days_back?: number;    // default 30
   max_cloud_cover?: number; // default 20
 }
@@ -187,6 +188,7 @@ export const fetchRealtimeImagery = async (
       latitude: params.latitude,
       longitude: params.longitude,
       buffer_km: params.buffer_km ?? 5,
+      bbox: params.bbox,
       days_back: params.days_back ?? 30,
       max_cloud_cover: params.max_cloud_cover ?? 20,
     },
@@ -215,6 +217,7 @@ export const fetchAndProcessRealtime = async (
       latitude: params.latitude,
       longitude: params.longitude,
       buffer_km: params.buffer_km ?? 5,
+      bbox: params.bbox,
       days_back: params.days_back ?? 30,
       max_cloud_cover: params.max_cloud_cover ?? 20,
     },
