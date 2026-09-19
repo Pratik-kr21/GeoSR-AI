@@ -39,4 +39,25 @@ class StorageService:
         )
         return file_path
 
+    def get_presigned_url(self, object_name: str, expires_delta=None):
+        """
+        Generates a presigned URL for downloading an object directly from MinIO.
+        """
+        from datetime import timedelta
+        if expires_delta is None:
+            expires_delta = timedelta(hours=1)
+        # For localhost deployment, we might need to replace minio:9000 with localhost:9000
+        # if the frontend is accessing it from outside the docker network
+        url = self.client.presigned_get_object(
+            self.bucket_name,
+            object_name,
+            expires=expires_delta
+        )
+        
+        # Hack for local dev: replace internal docker hostname with localhost
+        if "minio:9000" in url:
+            url = url.replace("minio:9000", "localhost:9000")
+            
+        return url
+
 storage_service = StorageService()
