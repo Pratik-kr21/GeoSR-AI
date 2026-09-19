@@ -19,6 +19,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt
 
+# Install the new libraries separately so we don't invalidate the 20-minute Docker cache layer above
+RUN pip install --default-timeout=1000 requests>=2.31.0 sentinel-images-downloader
 # Copy application code
 COPY . .
 
