@@ -1,4 +1,4 @@
-# 🛰️ GeoSR-AI — Satellite Super-Resolution Platform
+# 🛰️ GeoSR-AI — GeoIntelligence Decision Platform
 
 <div align="center">
 
@@ -9,7 +9,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![SIH](https://img.shields.io/badge/Smart_India-Hackathon-FF6B35?style=for-the-badge)
 
-**A full-stack AI platform for upscaling satellite imagery from 10m to 2.5m resolution using PyTorch SRCNN, with an interactive geospatial dashboard and an offline AI assistant.**
+**A full-stack AI platform for satellite intelligence. Combines deep learning super-resolution (10m → 2.5m) with multi-layered spectral analytics, change detection, anomaly identification, and a GeoRisk decision indicator.**
 
 [Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [API Docs](#-api-reference) • [Usage](#-usage-guide)
 
@@ -19,9 +19,11 @@
 
 ## 🔭 Overview
 
-**GeoSR-AI** is a production-grade platform built for the **Smart India Hackathon (SIH)** that applies deep learning-based super-resolution (SR) to Sentinel-2 satellite GeoTIFFs. It upscales the native 10m/pixel resolution to **2.5m/pixel (4× enhancement)** using a trained **SRCNN (Super-Resolution Convolutional Neural Network)** model, making it viable for precision agriculture, urban planning, disaster response, and defence applications.
+**GeoSR-AI** is a production-grade **GeoIntelligence Decision Platform** built for the **Smart India Hackathon (SIH)**. 
 
-The system is engineered to handle **multi-gigabyte GeoTIFFs** efficiently through **tiled streaming inference** — tiles are processed in 1024×1024 chunks and written directly to disk, preventing out-of-memory errors that would otherwise crash naive implementations.
+Originally an enhancement tool, the platform applies PyTorch-based **Super-Resolution (SRCNN)** to upscale Sentinel-2 satellite GeoTIFFs from 10m to 2.5m/pixel. It now additionally features a multi-layered analytical engine that computes **Spectral Indices (NDVI/NDWI)**, detects **Temporal Changes**, highlights **Statistical Anomalies**, and calculates a weighted **GeoRisk Index** incorporating live weather data. 
+
+The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** efficiently through tiled streaming inference and integrates a **Tool-Augmented Offline LLM (Ollama)** to help users interpret the vast amount of generated intelligence.
 
 ---
 
@@ -29,67 +31,50 @@ The system is engineered to handle **multi-gigabyte GeoTIFFs** efficiently throu
 
 | Feature | Description |
 |---------|-------------|
-| 🧠 **Tiled ML Inference** | Processes massive GeoTIFFs tile-by-tile using PyTorch SRCNN without OOM errors. Supports 4-channel (RGB+NIR) Sentinel-2 inputs. |
-| 🗺️ **Interactive Map Viewer** | React-Leaflet integration with server-side CRS reprojection (UTM → WGS84) and percentile-normalized thumbnails for live web preview. |
-| 📊 **Quantitative Validation** | Auto-calculates PSNR, SSIM, Geo-Consistency, Avg Confidence, and Edge Accuracy metrics for every enhancement job. |
-| 🌡️ **Uncertainty Mapping** | Heatmap overlay showing per-pixel confidence scores from the SR model, highlighting clouds, shadows, and edge ambiguities. |
-| 🤖 **GeoAssist (Offline LLM)** | Conversational AI assistant powered by **Ollama** (fully local, no data leaves your machine) for interpreting validation results and satellite anomalies. |
-| 📁 **Project Management** | Full CRUD lifecycle for satellite analysis projects with metadata (location, resolution, timestamps) stored in PostgreSQL. |
-| 📤 **One-Click Export** | Download the enhanced GeoTIFF and validation JSON report directly from the dashboard. |
-| ⚙️ **Async Job Queue** | Celery + Redis queue ensures SR jobs never block the API. The frontend polls for real-time progress updates. |
-| ☁️ **S3-Compatible Storage** | All input and output GeoTIFFs are stored in MinIO — horizontally scalable to petabytes of satellite data. |
+| 🧠 **Global Residual SRCNN** | Processes massive GeoTIFFs tile-by-tile using PyTorch SRCNN with global residual connections (bicubic skip) for vastly sharper edges without OOM errors. |
+| 📊 **Multi-Layered Intelligence** | Computes NDVI (Vegetation) and NDWI (Water) indices, tracks temporal observation timelines, and identifies statistical anomalies using original Sentinel-2 data. |
+| ⇌ **Temporal Change Detection** | Compares observations at pixel level to detect critical spectral shifts, outputting quantitative change metrics and hotspots. |
+| ⚠ **GeoRisk Assessment** | Calculates a holistic prototype risk index combining vegetation stress, water stress, anomaly density, and Open-Meteo weather indicators. |
+| 🤖 **Tool-Augmented GeoAssist** | Conversational AI powered by **Ollama** that dynamically fetches real database analytics to interpret satellite anomalies and validation metrics natively. |
+| 🗺️ **Interactive Map Viewer** | React-Leaflet integration with server-side CRS reprojection, percentile-normalized thumbnails, and live analytical heatmap overlays. |
+| 📦 **Instant ZIP Exports** | Generates sub-second packaged exports containing enhanced GeoTIFFs, metadata, and mock confidence maps for downstream integration. |
+| 🌡️ **Quantitative Validation** | Auto-calculates PSNR, SSIM, Geo-Consistency, and generates pixel-level uncertainty heatmaps for model outputs. |
+| 📁 **Project Management** | Full CRUD lifecycle for projects and observations. Data stored securely in PostgreSQL and S3-compatible MinIO. |
 | 🐳 **Fully Dockerized** | One `docker-compose up` starts every service: DB, Redis, MinIO, Ollama, Backend, and Worker. |
 
 ---
 
 ## 🏗️ Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        BROWSER (React + Vite)                   │
-│   Landing → Dashboard → Validation → Uncertainty → GeoAssist    │
-│                    React-Leaflet Map Viewer                      │
+│   Dashboard → Intelligence → Risk → Change Detection → GeoAssist│
+│                    React-Leaflet Map Viewer                     │
 └────────────────────────────┬────────────────────────────────────┘
                              │ HTTP (Axios)
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    BACKEND API (FastAPI)                         │
-│  /projects  /upload  /super-resolution  /map  /validation       │
-│              /assistant (Ollama proxy)                          │
+│                    BACKEND API (FastAPI)                        │
+│   /projects  /upload  /super-resolution  /map  /validation      │
+│   /intelligence  /risk  /change-detection  /anomalies           │
+│              /assistant (Tool-Augmented Ollama)                 │
 └──────┬────────────────────────────────────────┬─────────────────┘
        │                                        │
        ▼                                        ▼
 ┌─────────────┐   Job Queue (Redis)   ┌────────────────────────┐
 │  PostgreSQL │ ◄──────────────────── │   Celery ML Worker     │
 │  (Projects, │                       │   PyTorch SRCNN        │
-│   Jobs, DB) │ ──────────────────── ►│   Tiled Inference      │
+│ Analytics)  │ ──────────────────── ►│   Tiled Inference      │
 └─────────────┘                       └───────────┬────────────┘
                                                    │ read/write
                                                    ▼
 ┌──────────────────────────────────────────────────────────────┐
-│             MinIO Object Storage (S3-Compatible)              │
+│             MinIO Object Storage (S3-Compatible)             │
 │   projects/1/inputs/<uuid>_file.tif                          │
 │   projects/1/outputs/sr_<uuid>_file.tif                      │
 └──────────────────────────────────────────────────────────────┘
-                                    │
-                              Ollama (Local LLM)
-                         http://ollama:11434 (GPU/CPU)
 ```
-
----
-
-## 🧠 ML Model — SRCNN
-
-The core model is a **Super-Resolution Convolutional Neural Network (SRCNN)** adapted for satellite imagery.
-
-- **Input**: 3-band normalized float tensor `[B, 3, H, W]` (RGB channels from Sentinel-2)
-- **Architecture**: Feature extraction → Non-linear mapping → Reconstruction conv layers
-- **Upscale Factor**: 4× (10m → 2.5m)
-- **Output**: `uint8` 3-band GeoTIFF with identical CRS and updated geo-transform
-- **Training Data**: Self-generated paired low-res/high-res tiles from raw Sentinel-2 GeoTIFFs
-- **Device**: CUDA GPU (auto-falls back to CPU if no GPU available)
-
-> **Note**: The trained weights (`srcnn_weights.pth`) are loaded from `/app/weights/`. The model gracefully slices 4-channel (RGB+NIR) inputs to 3 channels to match the weight architecture.
 
 ---
 
@@ -107,35 +92,26 @@ The core model is a **Super-Resolution Convolutional Neural Network (SRCNN)** ad
 | Tech | Purpose |
 |------|---------|
 | FastAPI | High-performance async REST API |
-| SQLAlchemy (Async) | ORM for PostgreSQL |
+| SQLAlchemy (Async) | ORM for PostgreSQL & Alembic Migrations |
 | Rasterio / GDAL | GeoTIFF parsing, CRS reprojection, thumbnail generation |
 | Pydantic v2 | Request/response validation and serialization |
 | MinIO SDK | S3-compatible object storage client |
 
-### 🧠 Machine Learning
+### 🧠 Machine Learning & Analytics
 | Tech | Purpose |
 |------|---------|
 | PyTorch | SRCNN model training and inference |
-| NumPy | Band data manipulation and normalization |
+| NumPy | High-speed analytical matrix operations (NDVI, NDWI, Z-scores) |
 | Rasterio | Tiled read/write of massive GeoTIFFs |
-
-### 🗄️ Infrastructure
-| Service | Image | Port |
-|---------|-------|------|
-| PostgreSQL + PostGIS | `postgis/postgis:15-3.3` | `5433` |
-| Redis | `redis:alpine` | `6379` |
-| MinIO | `quay.io/minio/minio:latest` | `9000`, `9001` |
-| Ollama | `ollama/ollama:latest` | `11434` |
-| FastAPI Backend | `./server` (custom build) | `8000` |
-| Celery Worker | `./server` (custom build) | — |
+| Ollama | Local LLM inference augmented with database tools |
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with Docker Compose)
-- NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) *(optional, but strongly recommended for fast inference)*
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) *(optional, but recommended)*
 
 ### 1. Clone & Start
 
@@ -144,96 +120,55 @@ git clone https://github.com/Pratik-kr21/GeoSR-AI.git
 cd GeoSR-AI
 docker-compose up -d --build
 ```
-
-This starts all 6 services. Wait ~30 seconds for them to become healthy.
+Wait ~30 seconds for all services to become healthy.
 
 ### 2. Initialize the Database & Storage
 
 ```bash
-# Create DB tables and MinIO buckets
+# Run Alembic migrations to build schemas
+docker-compose exec backend alembic upgrade head
+
+# Seed initial projects and MinIO buckets
 docker-compose exec backend python seed_dataset.py
 ```
 
-### 3. (Optional) Create a Sample Test File
-
-If you don't have a Sentinel-2 GeoTIFF, generate a synthetic test tile:
-
-```bash
-docker-compose exec backend python create_center_test.py
-```
-
-This creates `server/data/center_test.tif` — a 1024×1024 synthetic 4-band GeoTIFF.
-
-### 4. (Optional) Train the Model
-
-```bash
-# Generate paired training tiles from a raw GeoTIFF
-docker-compose exec backend python generate_dataset.py
-
-# Train the SRCNN model (saves weights to /app/weights/srcnn_weights.pth)
-docker-compose exec backend python train.py
-```
-
-### 5. Open the App
+### 3. Open the App
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | 🌐 Web App | http://localhost:5173 | — |
-| 📡 API Docs (Swagger) | http://localhost:8000/docs | — |
-| 🗄️ MinIO Console | http://localhost:9001 | `minioadmin` / `minioadmin` |
+| 📡 API Docs | http://localhost:8000/docs | — |
+| 🗄️ MinIO | http://localhost:9001 | `minioadmin` / `minioadmin` |
 
 ---
 
 ## 🌐 Usage Guide
 
-### Uploading & Enhancing
+### 1. Uploading & Enhancing
+1. On the **Dashboard**, click **Upload GeoTIFF** and select your Sentinel-2 `.tif` file.
+2. Click **Run Enhancement** to trigger the PyTorch SRCNN Celery job.
+3. The original (10m) and enhanced (2.5m) layers will appear on the Leaflet map.
 
-1. Open **http://localhost:5173** and click **Get Started**
-2. On the **Dashboard**, click **Upload GeoTIFF** and select your `.tif` file
-3. The file is uploaded to MinIO under `projects/1/inputs/`
-4. Click **Run Enhancement** — this enqueues a Celery job
-5. The **Processing Pipeline** panel on the right tracks progress:
-   - Upload GeoTIFF ✓
-   - Geo Preprocessing ✓
-   - Band Alignment ✓
-   - Super Resolution ✓ *(SRCNN inference runs here)*
-   - Geo-Consistency Check ✓
-   - Validation ✓
+### 2. GeoIntelligence Analytics
+- Navigate to the **Intelligence** page and click **Run Intelligence Analysis**.
+- View **NDVI**, **NDWI**, **Change Metrics**, and a breakdown of **Anomaly Zones**.
+- The analysis utilizes the original 10m Sentinel-2 bands to ensure scientific accuracy, completely separated from the SRCNN outputs.
 
-### Viewing Results on Map
+### 3. Risk Assessment
+- Go to **Risk Analysis** to see the unified **GeoRisk Index**.
+- This index scores out of 100 based on vegetation stress, temporal changes, anomalies, and live **Open-Meteo weather data**.
 
-Once enhanced:
-- The original (blurred, 10m) and enhanced (sharp, 2.5m) layers appear on the Leaflet map
-- Use the **Layer Toggles** below the map to show/hide each layer
-- The map auto-flies to the image bounds
+### 4. Temporal Intelligence
+- Use **Change Detection** to contrast two different MinIO objects, surfacing critical spectral shifts and hotspots.
+- Use **Timeline** to view historical spectral index records across analysis runs via Sparkline charts.
 
-### Validation Metrics
+### 5. Tool-Augmented GeoAssist
+Navigate to **GeoAssist** and ask complex questions like:
+- *"Why is the GeoRisk score high today?"*
+- *"Explain the current satellite analysis and vegetation anomalies."*
+- *"What does the validation PSNR score indicate about the AI enhancement?"*
 
-Navigate to **Validation** in the left sidebar to view:
-- **PSNR** (Peak Signal-to-Noise Ratio) in dB — higher is better
-- **SSIM** (Structural Similarity Index) — 0 to 1, closer to 1 is better
-- **Geo-Consistency** — measures spatial alignment with input CRS
-- **Avg Confidence** — mean model confidence across all pixels
-- **Edge Accuracy** — sharpness of enhanced edge features
-
-### Uncertainty Map
-
-Navigate to **Uncertainty** to view a heatmap showing pixel-level confidence. Red = low confidence (clouds, shadow edges), blue = high confidence.
-
-### GeoAssist (Offline AI)
-
-Navigate to **GeoAssist** and ask questions like:
-- *"Explain my PSNR score"*
-- *"What does low geo-consistency mean?"*
-- *"Analyze uncertainty hotspots"*
-
-The AI runs locally via Ollama — **no data leaves your machine**.
-
-### Exporting Results
-
-Click **Export** on the Dashboard to download:
-- `enhanced_<filename>.jpg` — the enhanced output as a JPEG
-- `validation_report.json` — full metrics in JSON format
+The AI runs locally via Ollama, using provided Python tools to read real database metrics before answering.
 
 ---
 
@@ -241,19 +176,15 @@ Click **Export** on the Dashboard to download:
 
 Base URL: `http://localhost:8000/api/v1`
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/projects/` | List all projects |
-| `POST` | `/projects/` | Create a new project |
-| `GET` | `/projects/{id}` | Get a project by ID |
-| `POST` | `/upload/{project_id}` | Upload a GeoTIFF to MinIO |
-| `POST` | `/super-resolution/{project_id}/enhance` | Trigger SR Celery job |
-| `GET` | `/super-resolution/jobs/{job_id}/status` | Poll job status |
-| `GET` | `/map/{project_id}/outputs/{filename}/thumbnail` | Fetch enhanced thumbnail (PNG) |
-| `GET` | `/map/{project_id}/inputs/{filename}/thumbnail` | Fetch original thumbnail (PNG) |
-| `GET` | `/map/{project_id}/outputs/{filename}/bounds` | Get geographic bounds |
-| `GET` | `/validation/{project_id}/metrics` | Get all quality metrics |
-| `POST` | `/assistant/{project_id}/query` | Query GeoAssist LLM |
+| Module | Endpoints |
+|--------|-----------|
+| **Projects & Files** | `GET /projects/`, `POST /projects/`, `POST /upload/{id}` |
+| **Super-Resolution** | `POST /super-resolution/{id}/enhance`, `GET /jobs/{id}/status` |
+| **Intelligence** | `POST /intelligence/{id}/analyze`, `GET /intelligence/{id}/summary` |
+| **Change Detection** | `POST /change-detection/{id}`, `GET /change-detection/{id}` |
+| **GeoRisk & Anomalies**| `GET /risk/{id}`, `GET /anomalies/{id}` |
+| **Map & Visuals** | `GET /map/{id}/.../thumbnail`, `GET /map/{id}/ndvi-heatmap` |
+| **GeoAssist LLM** | `POST /assistant/{id}/query` |
 
 Full interactive Swagger docs at: **http://localhost:8000/docs**
 
@@ -261,82 +192,47 @@ Full interactive Swagger docs at: **http://localhost:8000/docs**
 
 ## 📁 Project Structure
 
-```
+```text
 GeoSR-AI/
-├── client/                    # React frontend (Vite)
-│   └── src/
-│       ├── pages/
-│       │   ├── Dashboard.tsx          # Main upload + map viewer
-│       │   ├── ValidationPage.tsx     # Metrics + image comparison
-│       │   ├── UncertaintyPage.tsx    # Confidence heatmap
-│       │   ├── GeoAssistPage.tsx      # Offline LLM chat
-│       │   ├── ProjectsPage.tsx       # Project management
-│       │   └── LandingPage.tsx        # Marketing landing page
-│       ├── components/
-│       │   ├── MapViewer.tsx          # React-Leaflet map
-│       │   ├── Sidebar.tsx            # Navigation sidebar
-│       │   └── ExportModal.tsx        # Download modal
-│       └── services/
-│           └── api.ts                 # Axios API client
+├── client/src/
+│   ├── pages/
+│   │   ├── Dashboard.tsx          # Upload + Map + Intel Summary
+│   │   ├── IntelligencePage.tsx   # NDVI, NDWI, Anomalies
+│   │   ├── RiskAnalysisPage.tsx   # GeoRisk gauge + weather
+│   │   ├── ChangeDetectionPage.tsx# Temporal difference analysis
+│   │   ├── TimelinePage.tsx       # Historical sparklines
+│   │   ├── GeoAssistPage.tsx      # Tool-augmented LLM chat
+│   │   └── ValidationPage.tsx     # PSNR/SSIM metrics
+│   └── components/MapViewer.tsx   # React-Leaflet with dynamic layers
 │
-└── server/                    # FastAPI backend
-    ├── app/
-    │   ├── api/                       # REST route handlers
-    │   │   ├── projects.py
-    │   │   ├── upload.py
-    │   │   ├── super_resolution.py
-    │   │   ├── map.py
-    │   │   ├── validation.py
-    │   │   └── assistant.py
-    │   ├── services/                  # Business logic
-    │   │   ├── inference_service.py   # PyTorch SRCNN runner
-    │   │   ├── raster_service.py      # GDAL/Rasterio tools
-    │   │   ├── storage_service.py     # MinIO client
-    │   │   └── ollama_service.py      # LLM proxy
-    │   ├── workers/
-    │   │   ├── celery_app.py          # Celery instance
-    │   │   └── tasks.py               # Background job definitions
-    │   ├── ml/
-    │   │   └── model.py               # SRCNN PyTorch architecture
-    │   └── models.py                  # SQLAlchemy DB models
-    ├── generate_dataset.py            # Training data generator
-    ├── train.py                       # Model training script
-    ├── create_center_test.py          # Synthetic test tile creator
-    └── seed_dataset.py                # DB + MinIO initializer
+└── server/app/
+    ├── api/                       # FastAPI route handlers (intelligence, risk, assistant)
+    ├── services/
+    │   ├── inference_service.py   # PyTorch SRCNN runner
+    │   ├── spectral_service.py    # NDVI/NDWI computations
+    │   ├── risk_service.py        # GeoRisk weighting & Open-Meteo
+    │   ├── anomaly_service.py     # Statistical stress detection
+    │   ├── change_service.py      # Temporal comparisons
+    │   └── ollama_service.py      # Tool-augmented LLM integration
+    ├── workers/                   # Celery queue and background tasks
+    └── models.py                  # PostgreSQL DB Schema definitions
 ```
-
----
-
-## 🔧 Configuration
-
-All backend environment variables are set in `docker-compose.yml`:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `POSTGRES_SERVER` | `db` | PostgreSQL hostname |
-| `POSTGRES_PORT` | `5432` | PostgreSQL port |
-| `REDIS_HOST` | `redis` | Redis hostname |
-| `MINIO_ENDPOINT` | `minio:9000` | MinIO hostname:port |
-| `OLLAMA_URL` | `http://ollama:11434` | Ollama API base URL |
-
-GPU support is enabled by default in `docker-compose.yml` via the `deploy.resources.reservations.devices` block. If no GPU is available, the Celery worker and Ollama will automatically fall back to CPU.
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes
-4. Run the TypeScript check: `cd client && npx tsc --noEmit`
-5. Commit and push: `git push origin feature/my-feature`
-6. Open a Pull Request
+2. Create a feature branch: `git checkout -b feature/intelligence-update`
+3. Make your changes and run `npx tsc --noEmit` in `/client`
+4. Commit and push: `git push origin feature/intelligence-update`
+5. Open a Pull Request
 
 ---
 
 ## 📜 License
 
-This project was developed for the **Smart India Hackathon (SIH)** and is open-source for educational and research purposes.
+Developed for the **Smart India Hackathon (SIH)**. Open-source for educational and research purposes.
 
 ---
 
