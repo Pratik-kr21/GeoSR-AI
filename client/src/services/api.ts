@@ -117,5 +117,110 @@ export const getRiskAssessment = async (projectId: number) => {
   return response.data;
 };
 
-export default api;
+// ─── Real-Time Satellite Data (CDSE + Open-Meteo) API Functions ───────────────
 
+export interface RealtimeFetchParams {
+  latitude: number;
+  longitude: number;
+  buffer_km?: number;    // default 5
+  days_back?: number;    // default 30
+  max_cloud_cover?: number; // default 20
+}
+
+export interface RealtimeFetchResult {
+  observation_id: number;
+  object_name: string;
+  filename: string;
+  acquisition_date: string | null;
+  cloud_cover: number | null;
+  bounds: [number, number, number, number] | null;
+  weather_summary: {
+    available: boolean;
+    current_precip_mm: number | null;
+    total_7d_rain_mm: number | null;
+    daily_breakdown: { date: string; precip_mm: number }[];
+  };
+  message: string;
+}
+
+export interface FetchAndProcessResult {
+  observation_id: number;
+  object_name: string;
+  sr_job_id: string;
+  acquisition_date: string | null;
+  cloud_cover: number | null;
+  weather_summary: {
+    available: boolean;
+    current_precip_mm: number | null;
+    total_7d_rain_mm: number | null;
+  };
+  message: string;
+}
+
+/** Check if CDSE credentials are configured on the backend. */
+export const fetchRealtimeStatus = async () => {
+  const response = await api.get('/realtime/status');
+  return response.data as { cdse_enabled: boolean; message: string };
+};
+
+/**
+ * Non-destructive catalog check: find out if a scene exists at these
+ * coordinates without downloading anything. Fast (< 3s).
+ */
+export const checkSceneAvailability = async (params: RealtimeFetchParams) => {
+  const response = await api.get('/realtime/check-availability', { params });
+  return response.data;
+};
+
+/**
+ * Download the latest Sentinel-2 scene for the given location and store
+ * it in MinIO + PostgreSQL. Returns scene + weather metadata.
+ * Does NOT start the SR pipeline.
+ */
+export const fetchRealtimeImagery = async (
+  projectId: number,
+  params: RealtimeFetchParams
+): Promise<RealtimeFetchResult> => {
+  const response = await api.post(
+    `/realtime/fetch/${projectId}`,
+    {
+      latitude: params.latitude,
+      longitude: params.longitude,
+      buffer_km: params.buffer_km ?? 5,
+      days_back: params.days_back ?? 30,
+      max_cloud_cover: params.max_cloud_cover ?? 20,
+    },
+    { timeout: 300000 } // CDSE download can take up to 5 minutes
+  );
+  return response.data;
+};
+
+/** Get the most recently fetched real-time observation for a project. */
+export const getLatestRealtimeObservation = async (projectId: number) => {
+  const response = await api.get(`/realtime/latest/${projectId}`);
+  return response.data;
+};
+
+/**
+ * Full pipeline: download latest Sentinel-2 scene → upload → queue SR job.
+ * Returns sr_job_id to poll with checkJobStatus().
+ */
+export const fetchAndProcessRealtime = async (
+  projectId: number,
+  params: RealtimeFetchParams
+): Promise<FetchAndProcessResult> => {
+  const response = await api.post(
+    `/realtime/fetch-and-process/${projectId}`,
+    {
+      latitude: params.latitude,
+      longitude: params.longitude,
+      buffer_km: params.buffer_km ?? 5,
+      days_back: params.days_back ?? 30,
+      max_cloud_cover: params.max_cloud_cover ?? 20,
+    },
+    { timeout: 360000 } // download + SR queue
+  );
+  return response.data;
+};
+
+export default api;
