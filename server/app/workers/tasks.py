@@ -80,3 +80,104 @@ def fetch_gee_imagery(project_id: int, bbox: list, max_cloud_cover: int = 20):
     )
     
     return result
+
+
+@celery_app.task(name="app.workers.tasks.fetch_and_process_realtime")
+def fetch_and_process_realtime(project_id: int, latitude: float, longitude: float,
+                                buffer_km: float = 5.0, days_back: int = 30,
+                                max_cloud_cover: int = 20):
+    """
+    End-to-end real-time pipeline as a single Celery background task:
+      1. Authenticate with CDSE and download the latest Sentinel-2 scene
+      2. Upload the GeoTIFF to MinIO
+      3. Create an Observation record in PostgreSQL
+      4. Fetch live precipitation from Open-Meteo
+      5. Queue a Super-Resolution job
+      6. Return combined status dict for the frontend to poll
+
+    Use this from long-running background contexts. The HTTP endpoint
+    /api/v1/realtime/fetch-and-process runs the same logic inline (async).
+    """
+    import uuid
+    from datetime import datetime, timezone
+
+    from app.services.realtime_service import realtime_service
+    from app.services.storage_service import storage_service
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Observation, AnalysisJob
+
+    async def _run():
+        # 1. Download from CDSE (blocking, run in current thread)
+        try:
+            local_path, acquisition_date, cloud_cover, bounds = \
+                realtime_service.fetch_sentinel2_geotiff(
+                    lat=latitude, lon=longitude,
+                    buffer_km=buffer_km, days_back=days_back,
+                    max_cloud_cover=max_cloud_cover,
+                )
+        except Exception as e:
+            return {"status": "failed", "error": str(e), "stage": "cdse_download"}
+
+        # 2. Upload to MinIO
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"realtime_{timestamp}.tif"
+        object_name = f"projects/{project_id}/inputs/{filename}"
+        try:
+            storage_service.upload_file(local_path, object_name)
+        except Exception as e:
+            return {"status": "failed", "error": str(e), "stage": "minio_upload"}
+
+        # 3. Fetch weather (non-blocking async)
+        weather = await realtime_service.fetch_weather_data(latitude, longitude)
+
+        # 4. Create Observation in DB
+        engine = create_async_engine(settings.DATABASE_URI, echo=False)
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        obs_id = None
+        async with async_session() as session:
+            obs = Observation(
+                project_id=project_id,
+                object_name=object_name,
+                satellite="Sentinel-2 L2A (CDSE)",
+                cloud_percentage=cloud_cover,
+                observation_date=acquisition_date,
+                bbox=bounds,
+            )
+            session.add(obs)
+            await session.commit()
+            await session.refresh(obs)
+            obs_id = obs.id
+
+            # 5. Create SR job record
+            sr_job_id = str(uuid.uuid4())
+            sr_job = AnalysisJob(
+                id=sr_job_id, project_id=project_id,
+                status="pending", input_resolution=10.0, target_resolution=2.5,
+            )
+            session.add(sr_job)
+            await session.commit()
+
+        await engine.dispose()
+
+        # 6. Queue SR pipeline
+        output_path = object_name.replace("/inputs/", "/outputs/sr_")
+        run_super_resolution_pipeline.delay(
+            job_id=sr_job_id,
+            project_id=project_id,
+            input_path=object_name,
+            output_path=output_path,
+        )
+
+        return {
+            "status": "processing",
+            "observation_id": obs_id,
+            "object_name": object_name,
+            "sr_job_id": sr_job_id,
+            "acquisition_date": acquisition_date.isoformat() if acquisition_date else None,
+            "cloud_cover": cloud_cover,
+            "weather_available": weather.get("available", False),
+            "total_7d_rain_mm": weather.get("total_7d_rain_mm"),
+        }
+
+    return asyncio.run(_run())
