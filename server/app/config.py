@@ -38,7 +38,22 @@ class Settings(BaseSettings):
     
     # Ollama
     OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
-    
+
+    # ─── CDSE (Copernicus Data Space Ecosystem) ────────────────────────────────
+    # Register free at https://dataspace.copernicus.eu/
+    # Create an OAuth client at https://shapps.dataspace.copernicus.eu/dashboard/#/account/settings
+    # Leave empty to gracefully disable real-time Sentinel-2 fetching.
+    CDSE_CLIENT_ID: str = os.getenv("CDSE_CLIENT_ID", "")
+    CDSE_CLIENT_SECRET: str = os.getenv("CDSE_CLIENT_SECRET", "")
+
+    @property
+    def CDSE_ENABLED(self) -> bool:
+        """Real-time Sentinel-2 download is available only when credentials are set."""
+        return bool(self.CDSE_CLIENT_ID and self.CDSE_CLIENT_SECRET)
+
+    # ─── Open-Meteo (free, no API key required) ───────────────────────────────
+    OPEN_METEO_BASE_URL: str = os.getenv("OPEN_METEO_BASE_URL", "https://api.open-meteo.com/v1/forecast")
+
     class Config:
         case_sensitive = True
 
