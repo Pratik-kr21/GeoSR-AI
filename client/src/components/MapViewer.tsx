@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import L from "leaflet";
-import { MapContainer, TileLayer, LayersControl, useMap, ImageOverlay, Pane } from "react-leaflet";
+import { MapContainer, TileLayer, LayersControl, useMap, ImageOverlay, Pane, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import "leaflet-draw";
@@ -77,7 +77,49 @@ const BoundsFitter = ({ bounds }: { bounds: [[number, number], [number, number]]
   return null;
 };
 
-export default function MapViewer({ activeLayers, isCompleted, objectName, onBboxSelect }: { activeLayers: Set<string>, isCompleted: boolean, objectName: string | null, onBboxSelect?: (bbox: [number, number, number, number]) => void }) {
+// Pick Location: clicking the map fires onLocationPick(lat, lon) and drops a marker
+const LocationPicker = ({ onLocationPick }: { onLocationPick: (lat: number, lon: number) => void }) => {
+  const map = useMap();
+  const [markerPos, setMarkerPos] = useState<L.LatLng | null>(null);
+
+  useEffect(() => {
+    map.getContainer().style.cursor = 'crosshair';
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      setMarkerPos(e.latlng);
+      onLocationPick(e.latlng.lat, e.latlng.lng);
+    };
+    map.on('click', handleClick);
+    return () => {
+      map.getContainer().style.cursor = '';
+      map.off('click', handleClick);
+    };
+  }, [map, onLocationPick]);
+
+  if (!markerPos) return null;
+  return (
+    <Marker position={markerPos}>
+      <Popup>
+        <div className="text-xs">
+          <strong>Selected Location</strong><br />
+          {markerPos.lat.toFixed(5)}, {markerPos.lng.toFixed(5)}
+        </div>
+      </Popup>
+    </Marker>
+  );
+};
+
+export default function MapViewer({ activeLayers, isCompleted, objectName, onBboxSelect, pickMode, onLocationPick, realtimeBounds }: {
+  activeLayers: Set<string>;
+  isCompleted: boolean;
+  objectName: string | null;
+  onBboxSelect?: (bbox: [number, number, number, number]) => void;
+  /** When true, clicking the map picks a location instead of normal interaction */
+  pickMode?: boolean;
+  /** Called with lat/lon when user clicks the map in pick mode */
+  onLocationPick?: (lat: number, lon: number) => void;
+  /** If provided, the map will auto-fly to these bounds (e.g. after a realtime fetch) */
+  realtimeBounds?: [[number, number], [number, number]] | null;
+}) {
   const center: [number, number] = [30.7333, 76.7794];
   const [inputBounds, setInputBounds] = useState<[[number, number], [number, number]] | null>(null);
   const [outputBounds, setOutputBounds] = useState<[[number, number], [number, number]] | null>(null);
@@ -119,8 +161,12 @@ export default function MapViewer({ activeLayers, isCompleted, objectName, onBbo
       >
         <MapResizer />
         {inputBounds && <BoundsFitter bounds={inputBounds} />}
+        {realtimeBounds && <BoundsFitter bounds={realtimeBounds} />}
         
-        {onBboxSelect && <DrawControl onBboxSelect={onBboxSelect} />}
+        {pickMode && onLocationPick && (
+          <LocationPicker onLocationPick={onLocationPick} />
+        )}
+        {!pickMode && onBboxSelect && <DrawControl onBboxSelect={onBboxSelect} />}
 
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Satellite Base (Esri)">
