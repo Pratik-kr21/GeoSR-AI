@@ -371,6 +371,201 @@ class RealtimeService:
                 round(fallback_lat + delta_lat, 6),
             ]
 
+    # ── Sentinel-1 / CDSE ─────────────────────────────────────────────────────
+
+    def fetch_sentinel1_geotiff(
+        self,
+        lat: Optional[float] = None,
+        lon: Optional[float] = None,
+        buffer_km: Optional[float] = 5.0,
+        bbox: Optional[List[float]] = None,
+        days_back: int = 30,
+        polarizations: List[str] = ["VV", "VH"],
+        orbit_direction: Optional[str] = None,
+    ) -> Tuple[str, Optional[datetime], float, List[float], Dict[str, Any]]:
+        """
+        Download Sentinel-1 IW GRD GeoTIFF (VV and VH backscatter in linear power).
+        """
+        if bbox is None:
+            if lat is None or lon is None:
+                raise ValueError("Must provide either a bounding box (bbox) or lat/lon center point.")
+            center_lat, center_lon = lat, lon
+        else:
+            center_lon = (bbox[0] + bbox[2]) / 2
+            center_lat = (bbox[1] + bbox[3]) / 2
+
+        token = _get_cdse_token()
+        
+        # Determine bbox
+        if bbox is None:
+            lat_diff = buffer_km / 111.0
+            lon_diff = buffer_km / (111.0 * math.cos(math.radians(center_lat)))
+            bbox = [center_lon - lon_diff, center_lat - lat_diff, center_lon + lon_diff, center_lat + lat_diff]
+
+        end_date = datetime.now(timezone.utc)
+        start_date = end_date - timedelta(days=days_back)
+        from_time = start_date.strftime("%Y-%m-%dT00:00:00Z")
+        to_time = end_date.strftime("%Y-%m-%dT23:59:59Z")
+
+        # Linear power evalscript for VV and VH
+        evalscript = """
+        //VERSION=3
+        function setup() {
+            return {
+                input: ["VV", "VH", "dataMask"],
+                output: { bands: 3, sampleType: "FLOAT32" }
+            };
+        }
+        function evaluatePixel(sample) {
+            // Return linear power. dB can be calculated later as 10 * log10(val)
+            return [sample.VV, sample.VH, sample.dataMask];
+        }
+        """
+        
+        data_filter = {
+            "timeRange": {"from": from_time, "to": to_time},
+            "acquisitionMode": "IW",
+            "polarization": "DV", # Dual polarization (VV + VH)
+            "resolution": "HIGH"
+        }
+        if orbit_direction:
+            data_filter["orbitDirection"] = orbit_direction
+
+        payload = {
+            "input": {
+                "bounds": {
+                    "bbox": bbox,
+                    "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}
+                },
+                "data": [{
+                    "type": "sentinel-1-grd",
+                    "dataFilter": data_filter,
+                    "processing": {
+                        "backCoeff": "SIGMA0_ELLIPSOID",
+                        "orthorectify": True
+                    }
+                }]
+            },
+            "output": {
+                "width": 512,
+                "height": 512,
+                "responses": [{"identifier": "default", "format": {"type": "image/tiff"}}]
+            },
+            "evalscript": evalscript
+        }
+
+        url = "https://sh.dataspace.copernicus.eu/api/v1/process"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        logger.info(f"Fetching Sentinel-1 SAR imagery... days_back={days_back}")
+        resp = requests.post(url, headers=headers, json=payload, timeout=60)
+        
+        if resp.status_code != 200:
+            if "No data" in resp.text:
+                raise RuntimeError(f"No Sentinel-1 scene found. Try increasing days_back.")
+            raise RuntimeError(f"Sentinel Hub S1 Process API error: {resp.text}")
+
+        final_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_sentinel1.tif")
+        with open(final_path, "wb") as f:
+            f.write(resp.content)
+            
+        bounds = self._read_tif_bounds(final_path, center_lat, center_lon, buffer_km if bbox is None else 0, bbox)
+        
+        # We don't get the exact acquisition date from Process API easily, we can use headers or fallback
+        # SH Process API returns 'SH-Date' header sometimes, but let's just use end_date as proxy if missing
+        acquired_date = end_date
+        date_header = resp.headers.get("x-sh-date")
+        if date_header:
+            try:
+                acquired_date = datetime.strptime(date_header, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
+                
+        metadata = {
+            "polarizations": polarizations,
+            "unit": "linear_power",
+            "orbit_direction": orbit_direction or "UNKNOWN"
+        }
+
+        return final_path, acquired_date, 0.0, bounds, metadata
+
+    # ── Copernicus DEM ────────────────────────────────────────────────────────
+
+    def fetch_copernicus_dem(
+        self,
+        lat: float,
+        lon: float,
+        buffer_km: float = 5.0,
+        bbox: Optional[List[float]] = None
+    ) -> Tuple[str, List[float]]:
+        """
+        Download Copernicus DEM (30m) for the given bounds.
+        """
+        token = _get_cdse_token()
+        
+        if bbox is None:
+            lat_diff = buffer_km / 111.0
+            lon_diff = buffer_km / (111.0 * math.cos(math.radians(lat)))
+            bbox = [lon - lon_diff, lat - lat_diff, lon + lon_diff, lat + lat_diff]
+
+        # DEM Evalscript for FLOAT32 elevation
+        evalscript = """
+        //VERSION=3
+        function setup() {
+            return {
+                input: ["DEM", "dataMask"],
+                output: { bands: 2, sampleType: "FLOAT32" }
+            };
+        }
+        function evaluatePixel(sample) {
+            return [sample.DEM, sample.dataMask];
+        }
+        """
+
+        payload = {
+            "input": {
+                "bounds": {
+                    "bbox": bbox,
+                    "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}
+                },
+                "data": [{
+                    "type": "dem",
+                    "dataFilter": {
+                        "demInstance": "COPERNICUS_90"
+                    }
+                }]
+            },
+            "output": {
+                "width": 512,
+                "height": 512,
+                "responses": [{"identifier": "default", "format": {"type": "image/tiff"}}]
+            },
+            "evalscript": evalscript
+        }
+
+        url = "https://sh.dataspace.copernicus.eu/api/v1/process"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        logger.info(f"Fetching Copernicus DEM 30m imagery...")
+        resp = requests.post(url, headers=headers, json=payload, timeout=60)
+        
+        if resp.status_code != 200:
+            raise RuntimeError(f"Sentinel Hub DEM Process API error: {resp.text}")
+
+        final_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_dem.tif")
+        with open(final_path, "wb") as f:
+            f.write(resp.content)
+            
+        bounds = self._read_tif_bounds(final_path, lat, lon, buffer_km if bbox is None else 0, bbox)
+        
+        return final_path, bounds
+
     # ── Open-Meteo weather ────────────────────────────────────────────────────
 
     async def fetch_weather_data(self, lat: float, lon: float) -> Dict[str, Any]:
