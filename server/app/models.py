@@ -36,6 +36,7 @@ class Observation(Base):
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     object_name = Column(String, nullable=False)         # MinIO object path
     satellite = Column(String, default="Sentinel-2")
+    sensor_type = Column(String, default="sentinel-2", nullable=True)
     cloud_percentage = Column(Float, nullable=True)
     observation_date = Column(DateTime(timezone=True), nullable=True)
     bands_count = Column(Integer, nullable=True)

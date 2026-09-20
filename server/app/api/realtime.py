@@ -394,3 +394,97 @@ async def check_scene_availability(
         max_cloud_cover=max_cloud_cover,
     )
     return result
+
+
+class HistoricalAnalysisRequest(BaseModel):
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    buffer_km: float = Field(5.0, ge=0.5, le=100)
+    years: list[int]
+    season_start: str = "01-01"
+    season_end: str = "12-31"
+    max_cloud_cover: int = 40
+
+@router.post("/fetch-sar/{project_id}")
+async def fetch_sar(project_id: int, req: RealtimeFetchRequest, db: AsyncSession = Depends(get_db)):
+    _check_cdse_available()
+    proj_result = await db.execute(select(Project).filter(Project.id == project_id))
+    if not proj_result.scalars().first():
+        raise HTTPException(status_code=404, detail="Project not found.")
+        
+    from app.workers.tasks import fetch_sar_background
+    job_id = str(uuid.uuid4())
+    
+    task = fetch_sar_background.delay(
+        job_id=job_id, project_id=project_id, 
+        latitude=req.latitude or ((req.bbox[1] + req.bbox[3])/2 if req.bbox else 0), 
+        longitude=req.longitude or ((req.bbox[0] + req.bbox[2])/2 if req.bbox else 0), 
+        buffer_km=req.buffer_km, days_back=req.days_back, bbox=req.bbox
+    )
+    return {"job_id": task.id, "message": "SAR fetching and analysis started in background."}
+
+@router.post("/fetch-dem/{project_id}")
+async def fetch_dem(project_id: int, req: RealtimeFetchRequest, db: AsyncSession = Depends(get_db)):
+    _check_cdse_available()
+    proj_result = await db.execute(select(Project).filter(Project.id == project_id))
+    if not proj_result.scalars().first():
+        raise HTTPException(status_code=404, detail="Project not found.")
+        
+    from app.workers.tasks import fetch_dem_background
+    job_id = str(uuid.uuid4())
+    
+    task = fetch_dem_background.delay(
+        job_id=job_id, project_id=project_id, 
+        latitude=req.latitude or ((req.bbox[1] + req.bbox[3])/2 if req.bbox else 0), 
+        longitude=req.longitude or ((req.bbox[0] + req.bbox[2])/2 if req.bbox else 0), 
+        buffer_km=req.buffer_km, bbox=req.bbox
+    )
+    return {"job_id": task.id, "message": "DEM fetching and processing started in background."}
+
+@router.post("/fetch-cloudfree/{project_id}")
+async def fetch_cloudfree(project_id: int, req: RealtimeFetchRequest, db: AsyncSession = Depends(get_db)):
+    proj_result = await db.execute(select(Project).filter(Project.id == project_id))
+    if not proj_result.scalars().first():
+        raise HTTPException(status_code=404, detail="Project not found.")
+        
+    from app.workers.tasks import fetch_gee_composite_background
+    job_id = str(uuid.uuid4())
+    
+    task = fetch_gee_composite_background.delay(
+        job_id=job_id, project_id=project_id, 
+        latitude=req.latitude or ((req.bbox[1] + req.bbox[3])/2 if req.bbox else 0), 
+        longitude=req.longitude or ((req.bbox[0] + req.bbox[2])/2 if req.bbox else 0), 
+        buffer_km=req.buffer_km, days_back=req.days_back, max_cloud_cover=req.max_cloud_cover,
+        bbox=req.bbox
+    )
+    return {"job_id": task.id, "message": "GEE Composite fetch started in background."}
+
+@router.post("/historical-analysis/{project_id}")
+async def historical_analysis(project_id: int, req: HistoricalAnalysisRequest, db: AsyncSession = Depends(get_db)):
+    proj_result = await db.execute(select(Project).filter(Project.id == project_id))
+    if not proj_result.scalars().first():
+        raise HTTPException(status_code=404, detail="Project not found.")
+        
+    from app.workers.tasks import run_historical_analysis
+    job_id = str(uuid.uuid4())
+    task = run_historical_analysis.delay(
+        job_id=job_id, project_id=project_id, lat=req.latitude, lon=req.longitude, buffer_km=req.buffer_km,
+        years=req.years, season_start=req.season_start, season_end=req.season_end
+    )
+    return {"job_id": task.id, "message": "Historical analysis started in background."}
+
+
+@router.get("/jobs/{job_id}")
+async def get_realtime_job_status(job_id: str):
+    from app.workers.celery_app import celery_app
+    from celery.result import AsyncResult
+    task = AsyncResult(job_id, app=celery_app)
+    
+    if task.state == 'PENDING':
+        return {"status": "pending"}
+    elif task.state == 'SUCCESS':
+        return task.result
+    elif task.state == 'FAILURE':
+        return {"status": "failed", "error": str(task.info)}
+    else:
+        return {"status": task.state.lower()}
