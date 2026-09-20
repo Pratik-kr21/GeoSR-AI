@@ -25,3 +25,4 @@ ollama
 tqdm
 requests
 sentinel-images-downloader
+earthengine-api
