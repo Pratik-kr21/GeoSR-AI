@@ -128,7 +128,14 @@ export default function MapViewer({ activeLayers, isCompleted, objectName, onBbo
   useEffect(() => {
     if (objectName) {
       fetchInputMapBounds(1, objectName)
-        .then(res => setInputBounds(res.bounds))
+        .then(res => {
+          setInputBounds(res.bounds);
+          if (res.bounds) {
+            const [[s, w], [n, e]] = res.bounds;
+            localStorage.setItem("pickedLat", ((s + n) / 2).toString());
+            localStorage.setItem("pickedLon", ((w + e) / 2).toString());
+          }
+        })
         .catch(err => console.error("Failed to fetch input bounds", err));
     } else {
       setInputBounds(null);

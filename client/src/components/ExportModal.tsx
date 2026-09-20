@@ -1,12 +1,17 @@
 import { useState } from "react";
 
-const exportOptions = [
-  { id: "package", label: "Full Analysis Package (ZIP)", desc: "Includes Enhanced GeoTIFF, Confidence Map, Preview Image, JSON Metrics, and Provenance." },
-];
 
 export default function ExportModal({ onClose, objectName }: { onClose: () => void; objectName: string | null }) {
   const [selected, setSelected] = useState(new Set(["package"]));
   const [generating, setGenerating] = useState(false);
+
+  const getExportOptions = () => {
+    if (objectName?.includes("/sar_")) return [{ id: "package", label: "SAR Analysis Package (ZIP)", desc: "Includes SAR backscatter GeoTIFF, Preview Image, and Provenance." }];
+    if (objectName?.includes("/dem_")) return [{ id: "package", label: "DEM Topography Package (ZIP)", desc: "Includes Copernicus 3D DEM GeoTIFF, Preview Image, and Provenance." }];
+    if (objectName?.includes("gee_composite")) return [{ id: "package", label: "Cloud-Masked Composite (ZIP)", desc: "Includes GEE Composite GeoTIFF, Preview Image, and Provenance." }];
+    return [{ id: "package", label: "Super-Resolution Package (ZIP)", desc: "Includes Enhanced GeoTIFF, Confidence Map, Preview Image, JSON Metrics, and Provenance." }];
+  };
+  const exportOptions = getExportOptions();
 
   const toggle = (id: string) => {
     setSelected((s) => {

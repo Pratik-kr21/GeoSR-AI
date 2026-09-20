@@ -17,11 +17,13 @@ const layers = [
 export default function Dashboard({ 
   onNavigate, 
   objectName, 
-  setObjectName 
+  setObjectName,
+  setSensorData
 }: { 
   onNavigate: (p: Page) => void;
   objectName: string | null;
   setObjectName: (name: string | null) => void;
+  setSensorData?: (data: any) => void;
 }) {
   const [activeLayers, setActiveLayers] = useState(new Set(["enhanced", "original"]));
   const [showExport, setShowExport] = useState(false);
@@ -55,7 +57,22 @@ export default function Dashboard({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ─── Mode Toggle: Upload vs Fetch Realtime ─────────────────────────────────
-  const [inputMode, setInputMode] = useState<"upload" | "realtime">("upload");
+  const [inputMode, setInputMode] = useState<"upload" | "realtime">("realtime");
+  const [sensor, setSensor] = useState<"sentinel-2" | "sentinel-2-composite" | "sentinel-1" | "dem">("sentinel-2");
+
+  const sensorNames = {
+    "sentinel-2": "Optical Sentinel-2 (CDSE)",
+    "sentinel-2-composite": "Cloud-Masked Composite (GEE)",
+    "sentinel-1": "Radar Sentinel-1 (SAR)",
+    "dem": "Copernicus DEM (Terrain)"
+  };
+
+  const sensorDescriptions = {
+    "sentinel-2": "Optical multispectral imagery from Sentinel-2. Output: 4x Super-Resolved RGB GeoTIFF.",
+    "sentinel-2-composite": "Cloud-masked optical composite from GEE. Output: Cloud-free baseline for anomaly detection.",
+    "sentinel-1": "Synthetic Aperture Radar (SAR) backscatter. Output: Penetrates clouds to detect potential standing water/flooding.",
+    "dem": "Copernicus 30m Digital Elevation Model. Output: Topographic elevation map to identify low-lying zones and steep slopes."
+  };
 
   // ─── Realtime Fetch State ──────────────────────────────────────────────────
   const [realtimeBounds, setRealtimeBounds] = useState<[[number, number], [number, number]] | null>(null);
@@ -65,6 +82,11 @@ export default function Dashboard({
   const [realtimeBbox, setRealtimeBbox] = useState<[number, number, number, number] | null>(null);
   const [acquisitionDate, setAcquisitionDate] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (pickedLat) localStorage.setItem("pickedLat", pickedLat.toString());
+    if (pickedLon) localStorage.setItem("pickedLon", pickedLon.toString());
+  }, [pickedLat, pickedLon]);
+
   const handleRealtimeFetchSuccess = (result: RealtimeFetchResult) => {
     setObjectName(result.object_name);
     setUploadedFilename(result.filename);
@@ -72,6 +94,12 @@ export default function Dashboard({
     if (result.bounds) {
       const [w, s, e, n] = result.bounds;
       setRealtimeBounds([[s, w], [n, e]]);
+      const centerLat = (s + n) / 2;
+      const centerLon = (w + e) / 2;
+      setPickedLat(centerLat);
+      setPickedLon(centerLon);
+      localStorage.setItem("pickedLat", centerLat.toString());
+      localStorage.setItem("pickedLon", centerLon.toString());
     }
   };
 
@@ -141,6 +169,10 @@ export default function Dashboard({
     setIsUploading(true);
     setStatus("idle");
     setUploadedFilename(file.name);
+    
+    // Set the acquisition date for manually uploaded files based on file's last modified date
+    const date = new Date(file.lastModified).toISOString().slice(0, 10);
+    setAcquisitionDate(date);
 
     // Update pipeline
     setPipeline(prev => prev.map((s, i) => ({ ...s, done: i === 0 })));
@@ -242,29 +274,11 @@ export default function Dashboard({
       <div className="shrink-0 bg-navy-800 border-b border-navy-500/40 px-4 py-2.5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="font-display font-600 text-sm text-white">
-            {uploadedFilename || "No File Loaded"}
+            {uploadedFilename || sensorNames[sensor]}
           </span>
           {acquisitionDate && (
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              Acquired {acquisitionDate.slice(0, 10)}
-            </span>
-          )}
-          {objectName && !acquisitionDate && (
-            <>
-              {["Sentinel-2", "4× Upscale", "CRS Preserved"].map((chip) => (
-                <span key={chip} className="px-2 py-0.5 rounded text-[10px] font-mono bg-navy-700 border border-navy-500/40 text-slate-400">
-                  {chip}
-                </span>
-              ))}
-            </>
-          )}
-          {objectName && (
-            <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-              status === "completed" ? "bg-emerald-signal/10 border-emerald-signal/30 text-emerald-signal" :
-              status === "processing" ? "bg-amber-warn/10 border-amber-warn/30 text-amber-warn" :
-              "bg-navy-700 border-navy-500/40 text-slate-400"
-            }`}>
-              {status === "completed" ? "✓ Enhanced" : status === "processing" ? "⟳ Processing" : "Pending"}
+              Date: {acquisitionDate.slice(0, 10)}
             </span>
           )}
         </div>
@@ -340,11 +354,28 @@ export default function Dashboard({
               isCompleted={status === "completed"}
               objectName={objectName}
               onBboxSelect={(bbox) => {
-                if (inputMode === "upload") setSelectedBbox(bbox);
-                else setRealtimeBbox(bbox);
+                if (inputMode === "upload") {
+                  setSelectedBbox(bbox);
+                } else {
+                  setRealtimeBbox(bbox);
+                }
+                // Calculate center of drawn area and save for historical analysis
+                const [w, s, e, n] = bbox;
+                const centerLat = (s + n) / 2;
+                const centerLon = (w + e) / 2;
+                setPickedLat(centerLat);
+                setPickedLon(centerLon);
+                localStorage.setItem("pickedLat", centerLat.toString());
+                localStorage.setItem("pickedLon", centerLon.toString());
               }}
               pickMode={inputMode === "realtime" && pickMode}
-              onLocationPick={(lat, lon) => { setPickedLat(lat); setPickedLon(lon); setRealtimeBbox(null); }}
+              onLocationPick={(lat, lon) => { 
+                setPickedLat(lat); 
+                setPickedLon(lon); 
+                setRealtimeBbox(null); 
+                localStorage.setItem("pickedLat", lat.toString());
+                localStorage.setItem("pickedLon", lon.toString());
+              }}
               realtimeBounds={realtimeBounds}
             />
           </div>
@@ -371,26 +402,7 @@ export default function Dashboard({
           {/* Intelligence quick-summary strip */}
           {intelSummary && (
             <div className="shrink-0 bg-navy-800/60 border-t border-navy-500/30 px-4 py-2 flex items-center gap-4 flex-wrap">
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest shrink-0">Intelligence</span>
-              {intelSummary.ndvi_mean !== null && (
-                <span className="text-[11px] font-mono text-emerald-signal">
-                  NDVI {intelSummary.ndvi_mean?.toFixed(3)} · {intelSummary.ndvi_health_class}
-                </span>
-              )}
-              {intelSummary.risk_score !== null && (
-                <span className={`text-[11px] font-mono font-600 ${
-                  intelSummary.risk_score >= 75 ? "text-red-alert" :
-                  intelSummary.risk_score >= 50 ? "text-amber-warn" : "text-emerald-signal"
-                }`}>
-                  GeoRisk {Math.round(intelSummary.risk_score)} · {intelSummary.risk_label}
-                </span>
-              )}
-              {intelSummary.anomaly_count > 0 && (
-                <span className="text-[11px] font-mono text-purple-ai">
-                  {intelSummary.anomaly_count} anomal{intelSummary.anomaly_count === 1 ? "y" : "ies"}
-                </span>
-              )}
-              <div className="ml-auto flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => onNavigate("intelligence")}
                   className="px-2.5 py-1 rounded text-[10px] font-mono border border-cyan-glow/30 text-cyan-glow hover:bg-cyan-glow/10 transition-colors"
@@ -403,25 +415,37 @@ export default function Dashboard({
             </div>
           )}
 
-          {/* Metrics row — dynamic from API */}
-          <div className="shrink-0 bg-navy-800/80 border-t border-navy-500/30 px-4 py-3 grid grid-cols-5 gap-3">
-            {metricCards.map((m) => (
-              <div key={m.label} className="space-y-1">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[10px] font-mono text-slate-500">{m.label}</span>
-                  <span className={`text-sm font-display font-700 ${m.color}`}>
-                    {m.value}<span className="text-xs">{m.unit}</span>
-                  </span>
+          {/* Metrics row or Source Description */}
+          {inputMode === "upload" || sensor === "sentinel-2" ? (
+            <div className="shrink-0 bg-navy-800/80 border-t border-navy-500/30 px-4 py-3 grid grid-cols-5 gap-3">
+              {metricCards.map((m) => (
+                <div key={m.label} className="space-y-1">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[10px] font-mono text-slate-500">{m.label}</span>
+                    <span className={`text-sm font-display font-700 ${m.color}`}>
+                      {m.value}<span className="text-xs">{m.unit}</span>
+                    </span>
+                  </div>
+                  <div className="h-1 rounded-full bg-navy-600 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${m.color.replace("text-", "bg-")} transition-all duration-700`}
+                      style={{ width: `${m.bar}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-1 rounded-full bg-navy-600 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${m.color.replace("text-", "bg-")} transition-all duration-700`}
-                    style={{ width: `${m.bar}%` }}
-                  />
-                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="shrink-0 bg-navy-800/80 border-t border-navy-500/30 px-5 py-3.5 flex items-center justify-between">
+              <div>
+                 <h4 className="text-[13px] font-bold text-slate-300">{sensorNames[sensor as keyof typeof sensorNames]}</h4>
+                 <p className="text-[11px] text-slate-500 mt-0.5">{sensorDescriptions[sensor as keyof typeof sensorDescriptions]}</p>
               </div>
-            ))}
-          </div>
+              <div className="px-3 py-1 rounded-lg bg-navy-700 border border-navy-500/40 text-[10px] font-mono text-slate-400">
+                Native Fetch Mode
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right panel */}
@@ -466,6 +490,9 @@ export default function Dashboard({
                 pickedBbox={realtimeBbox}
                 onFetchSuccess={handleRealtimeFetchSuccess}
                 onProcessStarted={handleRealtimeProcessStarted}
+                setSensorData={setSensorData}
+                sensor={sensor}
+                setSensor={setSensor}
               />
             </div>
           )}
