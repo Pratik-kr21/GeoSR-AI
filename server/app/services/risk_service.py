@@ -1,14 +1,16 @@
-﻿import httpx
+import httpx
 import math
 from typing import Optional, Dict, Any, List
 
 # ─── Configurable Weights (must sum to 1.0) ────────────────────────────────────
 DEFAULT_WEIGHTS = {
-    "vegetation": 0.30,
-    "water":      0.20,
-    "change":     0.25,
+    "vegetation": 0.20,
+    "water":      0.15,
+    "change":     0.20,
     "weather":    0.15,
     "anomaly":    0.10,
+    "flood_terrain_risk": 0.10,
+    "slope_instability_risk": 0.10,
 }
 
 RISK_LABELS = [
@@ -195,6 +197,30 @@ class RiskService:
         )
         return {"score": round(score, 1), "explanation": explanation}
 
+    def compute_flood_terrain_score(self, low_lying_fraction: Optional[float], mean_slope: Optional[float]) -> Dict[str, Any]:
+        """Score 0-100 where 100 = high flood terrain risk (very low lying, very flat)."""
+        if low_lying_fraction is None or mean_slope is None:
+            return {"score": None, "explanation": "Terrain data unavailable."}
+            
+        # Higher low_lying_fraction -> higher risk
+        ll_score = min(100.0, low_lying_fraction * 150.0) 
+        
+        # Lower mean_slope -> higher flood accumulation risk
+        slope_score = max(0.0, 100.0 - (mean_slope * 5.0))
+        
+        score = (ll_score * 0.7) + (slope_score * 0.3)
+        explanation = f"Flood terrain risk score {round(score)} based on {low_lying_fraction*100:.1f}% low-lying area and {mean_slope:.1f}° mean slope."
+        return {"score": round(score, 1), "explanation": explanation}
+
+    def compute_slope_instability_score(self, steep_area_fraction: Optional[float], max_slope: Optional[float]) -> Dict[str, Any]:
+        """Score 0-100 where 100 = high slope instability risk (steep terrain)."""
+        if steep_area_fraction is None or max_slope is None:
+            return {"score": None, "explanation": "Terrain data unavailable."}
+            
+        score = min(100.0, steep_area_fraction * 200.0)
+        explanation = f"Slope instability score {round(score)} based on {steep_area_fraction*100:.1f}% steep area (max slope {max_slope:.1f}°)."
+        return {"score": round(score, 1), "explanation": explanation}
+
     def compute_risk(
         self,
         ndvi_mean: Optional[float] = None,
@@ -203,6 +229,7 @@ class RiskService:
         change_pct: Optional[float] = None,
         anomaly_list: Optional[List[Dict]] = None,
         weather_data: Optional[Dict] = None,
+        terrain_stats: Optional[Dict] = None,
         weights: Optional[Dict[str, float]] = None,
     ) -> Dict[str, Any]:
         """
@@ -220,6 +247,14 @@ class RiskService:
         change = self.compute_change_score(change_pct, ndvi_change)
         anomaly = self.compute_anomaly_score(anomaly_list or [])
         weather_score = weather_data.get("score", 0.0) if weather_data else 0.0
+        
+        low_lying_frac = terrain_stats.get("low_lying_fraction") if terrain_stats else None
+        mean_slope = terrain_stats.get("mean_slope") if terrain_stats else None
+        steep_frac = terrain_stats.get("steep_area_fraction") if terrain_stats else None
+        max_slope = terrain_stats.get("max_slope") if terrain_stats else None
+        
+        flood_terrain = self.compute_flood_terrain_score(low_lying_frac, mean_slope)
+        slope_inst = self.compute_slope_instability_score(steep_frac, max_slope)
 
         component_scores = {
             "vegetation": veg["score"],
@@ -228,11 +263,40 @@ class RiskService:
             "weather":    weather_score,
             "anomaly":    anomaly["score"],
         }
+        
+        explanations = {
+            "vegetation": veg["explanation"],
+            "water": water["explanation"],
+            "change": change["explanation"],
+            "anomaly": anomaly["explanation"],
+            "weather": (
+                f"Weather score {round(weather_score)}. " +
+                (", ".join(weather_data.get("factors", [])) if weather_data else "Weather data unavailable.")
+            ),
+        }
+        
+        # Add terrain components if available, else renormalize weights
+        if flood_terrain["score"] is not None:
+            component_scores["flood_terrain_risk"] = flood_terrain["score"]
+            explanations["flood_terrain_risk"] = flood_terrain["explanation"]
+        else:
+            weights.pop("flood_terrain_risk", None)
+            
+        if slope_inst["score"] is not None:
+            component_scores["slope_instability_risk"] = slope_inst["score"]
+            explanations["slope_instability_risk"] = slope_inst["explanation"]
+        else:
+            weights.pop("slope_instability_risk", None)
+            
+        # Renormalize weights
+        total_weight = sum(weights.values())
+        if total_weight > 0:
+            weights = {k: v / total_weight for k, v in weights.items()}
 
         # Weighted contributions
         weighted_scores = {
-            k: round(v * weights.get(k, 0), 2)
-            for k, v in component_scores.items()
+            k: round(component_scores.get(k, 0) * weights.get(k, 0), 2)
+            for k in weights.keys()
         }
 
         final_score = min(100.0, sum(weighted_scores.values()))
@@ -244,19 +308,9 @@ class RiskService:
             ndvi_change is not None,
             bool(anomaly_list),
             weather_data.get("available", False) if weather_data else False,
+            terrain_stats is not None,
         ])
-        confidence = round(0.40 + (data_available / 5.0) * 0.55, 3)
-
-        explanations = {
-            "vegetation": veg["explanation"],
-            "water": water["explanation"],
-            "change": change["explanation"],
-            "anomaly": anomaly["explanation"],
-            "weather": (
-                f"Weather score {round(weather_score)}. " +
-                (", ".join(weather_data.get("factors", [])) if weather_data else "Weather data unavailable.")
-            ),
-        }
+        confidence = round(0.40 + (data_available / 6.0) * 0.55, 3)
 
         # Overall narrative
         dominant = max(weighted_scores, key=lambda k: weighted_scores[k])
