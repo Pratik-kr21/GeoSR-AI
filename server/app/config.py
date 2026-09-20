@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # ─── Open-Meteo (free, no API key required) ───────────────────────────────
     OPEN_METEO_BASE_URL: str = os.getenv("OPEN_METEO_BASE_URL", "https://api.open-meteo.com/v1/forecast")
 
+    # ─── Google Earth Engine ────────────────────────────────
+    GEE_PROJECT_ID: str = os.getenv("GEE_PROJECT_ID", "")
+    GEE_SERVICE_ACCOUNT_EMAIL: str = os.getenv("GEE_SERVICE_ACCOUNT_EMAIL", "")
+    GEE_CREDENTIALS_PATH: str = os.getenv("GEE_CREDENTIALS_PATH", "/run/secrets/gee-service-account.json")
+    GEE_EXPORT_BUCKET: str = os.getenv("GEE_EXPORT_BUCKET", "")
+
     class Config:
         case_sensitive = True
 
