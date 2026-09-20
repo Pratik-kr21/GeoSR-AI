@@ -226,4 +226,42 @@ export const fetchAndProcessRealtime = async (
   return response.data;
 };
 
+// ─── Multi-Sensor & Historical API Functions ───────────────────────────────────
+
+export const fetchSAR = async (projectId: number, params: RealtimeFetchParams) => {
+  const response = await api.post(`/realtime/fetch-sar/${projectId}`, params);
+  return response.data;
+};
+
+export const fetchDEM = async (projectId: number, params: RealtimeFetchParams) => {
+  const response = await api.post(`/realtime/fetch-dem/${projectId}`, params);
+  return response.data;
+};
+
+export const fetchCloudMaskedComposite = async (projectId: number, params: RealtimeFetchParams) => {
+  const response = await api.post(`/realtime/fetch-cloudfree/${projectId}`, params);
+  return response.data;
+};
+
+export const runHistoricalAnalysis = async (
+  projectId: number, 
+  params: {
+    latitude: number;
+    longitude: number;
+    buffer_km: number;
+    years: number[];
+    season_start?: string;
+    season_end?: string;
+    max_cloud_cover?: number;
+  }
+) => {
+  const response = await api.post(`/realtime/historical-analysis/${projectId}`, params);
+  return response.data;
+};
+
+export const checkTaskStatus = async (jobId: string) => {
+  const response = await api.get(`/realtime/jobs/${jobId}`);
+  return response.data;
+};
+
 export default api;

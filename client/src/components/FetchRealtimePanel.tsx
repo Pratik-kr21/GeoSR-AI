@@ -20,7 +20,11 @@ import {
   fetchRealtimeImagery,
   fetchAndProcessRealtime,
   checkJobStatus,
+  checkTaskStatus,
   triggerSuperResolution,
+  fetchSAR,
+  fetchDEM,
+  fetchCloudMaskedComposite,
   type RealtimeFetchParams,
   type RealtimeFetchResult,
   type FetchAndProcessResult,
@@ -41,6 +45,9 @@ interface Props {
   onFetchSuccess?: (result: RealtimeFetchResult) => void;
   /** Called when fetch+process completes so Dashboard can start polling the SR job. */
   onProcessStarted?: (result: FetchAndProcessResult) => void;
+  setSensorData?: (data: any) => void;
+  sensor?: "sentinel-2" | "sentinel-2-composite" | "sentinel-1" | "dem";
+  setSensor?: (s: "sentinel-2" | "sentinel-2-composite" | "sentinel-1" | "dem") => void;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -128,6 +135,9 @@ export default function FetchRealtimePanel({
   pickedBbox,
   onFetchSuccess,
   onProcessStarted,
+  setSensorData,
+  sensor: externalSensor,
+  setSensor: externalSetSensor,
 }: Props) {
   // Form state
   const [lat, setLat] = useState<string>("28.6139"); // Delhi default
@@ -137,6 +147,10 @@ export default function FetchRealtimePanel({
   const [maxCloud, setMaxCloud] = useState(20);
   
   const [selectionMode, setSelectionMode] = useState<"point" | "area">("point");
+  const [localSensor, setLocalSensor] = useState<"sentinel-2" | "sentinel-2-composite" | "sentinel-1" | "dem">("sentinel-2");
+
+  const sensor = externalSensor || localSensor;
+  const setSensor = externalSetSensor || setLocalSensor;
 
   // Capability state
   const [cdseEnabled, setCdseEnabled] = useState<boolean | null>(null);
@@ -262,46 +276,111 @@ export default function FetchRealtimePanel({
     setFetchResult(null);
     setScenePreview(null);
     try {
-      // Phase 1 & 2: Download + Upload (server-side, shown as "fetching")
-      setStage("uploading");
-      const result = await fetchAndProcessRealtime(projectId, params);
-      setStage("enhancing");
+      if (sensor === "sentinel-2") {
+        // Phase 1 & 2: Download + Upload (server-side, shown as "fetching")
+        setStage("uploading");
+        const result = await fetchAndProcessRealtime(projectId, params);
+        setStage("enhancing");
 
-      // Convert to a RealtimeFetchResult-compatible object for display
-      setFetchResult({
-        observation_id: result.observation_id,
-        object_name: result.object_name,
-        filename: result.object_name.split("/").pop() || "",
-        acquisition_date: result.acquisition_date,
-        cloud_cover: result.cloud_cover,
-        bounds: null, // will be filled by map auto-fly
-        weather_summary: {
-          available: result.weather_summary.available,
-          current_precip_mm: result.weather_summary.current_precip_mm,
-          total_7d_rain_mm: result.weather_summary.total_7d_rain_mm,
-          daily_breakdown: [],
-        },
-        message: result.message,
-      });
+        // Convert to a RealtimeFetchResult-compatible object for display
+        setFetchResult({
+          observation_id: result.observation_id,
+          object_name: result.object_name,
+          filename: result.object_name.split("/").pop() || "",
+          acquisition_date: result.acquisition_date,
+          cloud_cover: result.cloud_cover,
+          bounds: null, // will be filled by map auto-fly
+          weather_summary: {
+            available: result.weather_summary.available,
+            current_precip_mm: result.weather_summary.current_precip_mm,
+            total_7d_rain_mm: result.weather_summary.total_7d_rain_mm,
+            daily_breakdown: [],
+          },
+          message: result.message,
+        });
 
-      onProcessStarted?.(result);
+        onProcessStarted?.(result);
 
-      // Poll SR job until done
-      const pollInterval = setInterval(async () => {
-        try {
-          const status = await checkJobStatus(result.sr_job_id);
-          if (status.status === "completed") {
+        // Poll SR job until done
+        const pollInterval = setInterval(async () => {
+          try {
+            const status = await checkJobStatus(result.sr_job_id);
+            if (status.status === "completed") {
+              clearInterval(pollInterval);
+              setStage("done");
+            } else if (status.status === "failed") {
+              clearInterval(pollInterval);
+              setStage("error");
+              setError("Super-resolution job failed. The image was fetched but could not be enhanced.");
+            }
+          } catch {
             clearInterval(pollInterval);
-            setStage("done");
-          } else if (status.status === "failed") {
-            clearInterval(pollInterval);
-            setStage("error");
-            setError("Super-resolution job failed. The image was fetched but could not be enhanced.");
           }
-        } catch {
-          clearInterval(pollInterval);
+        }, 3000);
+      } else {
+        // Multi-sensor flow
+        setStage("uploading");
+        let result: any;
+        if (sensor === "sentinel-1") {
+          result = await fetchSAR(projectId, params);
+        } else if (sensor === "dem") {
+          result = await fetchDEM(projectId, params);
+        } else if (sensor === "sentinel-2-composite") {
+          result = await fetchCloudMaskedComposite(projectId, params);
         }
-      }, 3000);
+        
+        setStage("enhancing"); // Show as processing
+        const pollInterval = setInterval(async () => {
+          try {
+            const status = await checkTaskStatus(result.job_id);
+            if (status.status === "completed" || status.status === "success") {
+              clearInterval(pollInterval);
+              setStage("done");
+              
+              const objName = status.result_path || (status.result && status.result.object_name) || status.object_name || "";
+              
+              const bounds = status.bounds || (status.result && status.result.bounds) || null;
+              const acqDate = status.acquisition_date || status.date_range || null;
+              const cloudCover = status.cloud_cover || (status.analysis && status.analysis.valid_percentage ? 100 - status.analysis.valid_percentage : null) || (status.valid_pixel_percentage ? 100 - status.valid_pixel_percentage : null);
+
+              setFetchResult({
+                observation_id: 0,
+                object_name: objName,
+                filename: objName.split("/").pop() || "sensor_data",
+                acquisition_date: acqDate,
+                cloud_cover: cloudCover !== null ? Math.round(cloudCover * 10) / 10 : null,
+                bounds: bounds,
+                weather_summary: { available: false, current_precip_mm: null, total_7d_rain_mm: null, daily_breakdown: [] },
+                message: "Fetched successfully."
+              });
+              
+              onFetchSuccess?.({
+                observation_id: 0,
+                object_name: objName,
+                filename: objName.split("/").pop() || "sensor_data",
+                acquisition_date: acqDate,
+                cloud_cover: cloudCover !== null ? Math.round(cloudCover * 10) / 10 : null,
+                bounds: bounds,
+                weather_summary: { available: false, current_precip_mm: null, total_7d_rain_mm: null, daily_breakdown: [] },
+                message: "Fetched successfully."
+              });
+              
+              if (setSensorData) {
+                setSensorData({
+                  sensor: sensor,
+                  raw: status
+                });
+              }
+            } else if (status.status === "failed") {
+              clearInterval(pollInterval);
+              setStage("error");
+              setError("Background job failed.");
+            }
+          } catch {
+            clearInterval(pollInterval);
+          }
+        }, 3000);
+      }
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
       const msg = typeof detail === "object"
@@ -366,32 +445,7 @@ export default function FetchRealtimePanel({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-3 p-4 bg-navy-900/80 backdrop-blur-xl rounded-xl border border-navy-700/60 shadow-2xl">
-
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg">
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
-          </svg>
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-white">Live Sentinel-2 Data</h3>
-          <p className="text-xs text-slate-400">Copernicus Data Space Ecosystem</p>
-        </div>
-        {cdseEnabled !== null && (
-          <div className={`ml-auto flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${
-            cdseEnabled
-              ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
-              : "text-amber-400 border-amber-500/30 bg-amber-500/10"
-          }`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${cdseEnabled ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-            {cdseEnabled ? "Live" : "No Credentials"}
-          </div>
-        )}
-      </div>
-
+    <div className="flex flex-col gap-5 p-5 bg-navy-900/80 backdrop-blur-xl rounded-2xl border border-navy-700/60 shadow-2xl">
       {/* CDSE not configured warning */}
       {cdseEnabled === false && (
         <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-300">
@@ -409,6 +463,22 @@ export default function FetchRealtimePanel({
           </a>
         </div>
       )}
+
+      {/* Sensor Selection */}
+      <div>
+        <label className="text-xs text-slate-400 mb-1 block">Data Source</label>
+        <select
+          value={sensor}
+          onChange={(e) => setSensor(e.target.value as any)}
+          disabled={isBusy}
+          className="w-full bg-navy-800 border border-navy-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+        >
+          <option value="sentinel-2">Optical Sentinel-2 (CDSE)</option>
+          <option value="sentinel-2-composite">Cloud-Masked Composite (GEE)</option>
+          <option value="sentinel-1">Radar Sentinel-1 (SAR)</option>
+          <option value="dem">Copernicus DEM (Terrain)</option>
+        </select>
+      </div>
 
       {/* Coordinate Inputs */}
       {selectionMode === "area" && pickedBbox ? (
@@ -428,7 +498,7 @@ export default function FetchRealtimePanel({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Latitude</label>
             <input
@@ -457,7 +527,7 @@ export default function FetchRealtimePanel({
       )}
 
       {/* Advanced Options */}
-      <div className="flex flex-col gap-3 text-xs mt-1">
+      <div className="flex flex-col gap-4 text-xs bg-navy-800/40 border border-navy-700/50 rounded-xl p-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-slate-400 mb-1 flex justify-between">
@@ -490,15 +560,15 @@ export default function FetchRealtimePanel({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col gap-2 mt-2">
+      <div className="flex flex-col gap-3 mt-2">
         <button
-          onClick={handleFetch}
-          disabled={isBusy || !cdseEnabled}
+          onClick={handleFetchAndProcess}
+          disabled={isBusy || (sensor === "sentinel-2" && !cdseEnabled)}
           className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-sm font-bold shadow-[0_0_15px_rgba(16,185,129,0.25)] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
         >
           {isBusy && stage !== "checking" ? (
             <span className="flex items-center justify-center gap-2">
-              <span className="animate-spin">⟳</span> Fetching from CDSE...
+              <span className="animate-spin">⟳</span> Fetching Data...
             </span>
           ) : "Fetch Latest Imagery"}
         </button>
@@ -517,7 +587,7 @@ export default function FetchRealtimePanel({
 
       {/* Progress Steps (shown when pipeline is running) */}
       {isBusy && stage !== "checking" && (
-        <div className="flex justify-between bg-navy-950/60 rounded-lg px-3 py-2">
+        <div className="flex flex-col gap-3 bg-navy-950/60 rounded-xl px-4 py-3 border border-navy-800">
           {stageLabels.map((s, idx) => (
             <StageStep
               key={s.key}
