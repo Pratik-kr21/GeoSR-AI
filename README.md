@@ -1,4 +1,4 @@
-# 🛰️ GeoSR-AI — GeoIntelligence Decision Platform
+# 🛰️ GeoSR-AI — Advanced GeoIntelligence Decision Platform
 
 <div align="center">
 
@@ -7,9 +7,9 @@
 ![PyTorch](https://img.shields.io/badge/PyTorch-SRCNN-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
 ![React](https://img.shields.io/badge/React-Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![SIH](https://img.shields.io/badge/Smart_India-Hackathon-FF6B35?style=for-the-badge)
+![Google Earth Engine](https://img.shields.io/badge/Google_Earth_Engine-Integration-34A853?style=for-the-badge&logo=google&logoColor=white)
 
-**A full-stack AI platform for satellite intelligence. Combines deep learning super-resolution (10m → 2.5m) with multi-layered spectral analytics, change detection, anomaly identification, and live real-time Sentinel-2 fetching via the Copernicus Sentinel Hub.**
+**A full-stack, multi-sensor AI platform for satellite intelligence. Combines deep learning super-resolution (10m → 2.5m) with Sentinel-1 SAR, Copernicus DEM, Google Earth Engine Historical Analysis, and live real-time Sentinel-2 fetching via the Copernicus Sentinel Hub (CDSE).**
 
 [Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [API Docs](#-api-reference) • [Usage](#-usage-guide)
 
@@ -21,9 +21,9 @@
 
 **GeoSR-AI** is a production-grade **GeoIntelligence Decision Platform** built for the **Smart India Hackathon (SIH)**. 
 
-Originally an enhancement tool, the platform applies PyTorch-based **Super-Resolution (SRCNN)** to upscale Sentinel-2 satellite GeoTIFFs from 10m to 2.5m/pixel. It now additionally features a multi-layered analytical engine that computes **Spectral Indices (NDVI/NDWI)**, detects **Temporal Changes**, highlights **Statistical Anomalies**, and calculates a weighted **GeoRisk Index** incorporating live weather data. 
+Originally an image enhancement tool, the platform applies PyTorch-based **Super-Resolution (SRCNN)** to upscale Sentinel-2 satellite GeoTIFFs from 10m to 2.5m/pixel. It has now evolved into a massive multi-sensor analytical engine that fetches **Sentinel-1 (SAR)**, **Copernicus DEM (Terrain)**, and generates **Google Earth Engine Cloud-Free Composites**. 
 
-The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** efficiently through tiled streaming inference and integrates a **Tool-Augmented Offline LLM (Ollama)** to help users interpret the vast amount of generated intelligence.
+The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** efficiently through tiled streaming inference, executes heavy workloads asynchronously using **Celery & Redis**, and provides deep historical insights through **Landsat multi-decadal time-series analysis**.
 
 ---
 
@@ -31,17 +31,16 @@ The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** e
 
 | Feature | Description |
 |---------|-------------|
-| 🧠 **Global Residual SRCNN** | Processes massive GeoTIFFs tile-by-tile using PyTorch SRCNN with global residual connections (bicubic skip) for vastly sharper edges without OOM errors. |
-| 📊 **Multi-Layered Intelligence** | Computes NDVI (Vegetation) and NDWI (Water) indices, tracks temporal observation timelines, and identifies statistical anomalies using original Sentinel-2 data. |
-| ⇌ **Temporal Change Detection** | Compares observations at pixel level to detect critical spectral shifts, outputting quantitative change metrics and hotspots. |
-| ⚠ **GeoRisk Assessment** | Calculates a holistic prototype risk index combining vegetation stress, water stress, anomaly density, and Open-Meteo weather indicators. |
-| 🤖 **Tool-Augmented GeoAssist** | Conversational AI powered by **Ollama** that dynamically fetches real database analytics to interpret satellite anomalies and validation metrics natively. |
-| 🗺️ **Interactive Map Viewer** | React-Leaflet integration with server-side CRS reprojection, percentile-normalized thumbnails, and live analytical heatmap overlays. |
-| ⚡ **Live Sentinel Hub Fetching**| Instantly crop and download live Sentinel-2 4-band imagery for any coordinate using the Copernicus Process API (< 5s download times). |
-| 📦 **Instant ZIP Exports** | Generates sub-second packaged exports containing enhanced GeoTIFFs, metadata, and mock confidence maps for downstream integration. |
-| 🌡️ **Quantitative Validation** | Auto-calculates PSNR, SSIM, Geo-Consistency, and generates pixel-level uncertainty heatmaps for model outputs. |
-| 📁 **Project Management** | Full CRUD lifecycle for projects and observations. Data stored securely in PostgreSQL and S3-compatible MinIO. |
-| 🐳 **Fully Dockerized** | One `docker-compose up` starts every service: DB, Redis, MinIO, Ollama, Backend, and Worker. |
+| 🧠 **Global Residual SRCNN** | Processes massive Sentinel-2 GeoTIFFs tile-by-tile using PyTorch SRCNN with global residual connections (bicubic skip) for vastly sharper edges (10m to 2.5m). |
+| 🛰️ **Live Multi-Sensor Fetching**| Instantly crop and download live Sentinel-2 (Optical), Sentinel-1 (SAR), and Copernicus DEM imagery for any drawn coordinate using the **Copernicus Process API (CDSE)**. |
+| 🌍 **Google Earth Engine Integration** | Automatically generate highly accurate **Cloud-Free Composites** using GEE's HARMONIZED datasets to bypass weather interference. |
+| 🕰️ **Multi-Decadal Historical Analysis** | Query Landsat datasets via GEE to instantly map historical NDVI distributions across 30+ years (1990-2023) for long-term climate tracking. |
+| 📊 **Multi-Sensor Statistics Export** | Automatically fuses NDVI (Vegetation), SAR Backscatter (Moisture/Texture), and DEM Elevation data into a unified, downloadable CSV export. |
+| ⚠ **Multi-Modal GeoRisk** | Calculates a holistic prototype risk index combining vegetation, water, flood terrain risk, slope instability, and **live Open-Meteo weather data**. |
+| 🗺️ **Interactive Map Viewer** | React-Leaflet integration with custom drawing tools (Bounding Box/AOI), synchronized coordinates, server-side CRS reprojection, and sharp image overlays. |
+| 🌡️ **Quantitative Validation** | Auto-calculates PSNR, SSIM, Geo-Consistency, and generates pixel-level uncertainty metrics for model outputs. |
+| 📁 **Project Management** | Full CRUD lifecycle for projects and observations. Data stored securely in PostgreSQL and S3-compatible **MinIO**. |
+| 🐳 **Fully Dockerized** | One `docker-compose up` starts every service: DB, Redis, MinIO, FastAPI Backend, and Celery ML Worker. |
 
 ---
 
@@ -50,30 +49,30 @@ The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** e
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        BROWSER (React + Vite)                   │
-│   Dashboard → Intelligence → Risk → Change Detection → GeoAssist│
-│                    React-Leaflet Map Viewer                     │
+│      Dashboard → Historical Comparison → Multi-Sensor Export    │
+│            React-Leaflet Map Viewer & Area Draw Tools           │
 └────────────────────────────┬────────────────────────────────────┘
                              │ HTTP (Axios)
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BACKEND API (FastAPI)                        │
 │   /projects  /upload  /super-resolution  /map  /validation      │
-│   /intelligence  /risk  /change-detection  /anomalies           │
-│              /assistant (Tool-Augmented Ollama)                 │
+│   /realtime/fetch-sar   /fetch-dem   /fetch-cloudfree           │
 └──────┬────────────────────────────────────────┬─────────────────┘
        │                                        │
        ▼                                        ▼
 ┌─────────────┐   Job Queue (Redis)   ┌────────────────────────┐
 │  PostgreSQL │ ◄──────────────────── │   Celery ML Worker     │
-│  (Projects, │                       │   PyTorch SRCNN        │
-│ Analytics)  │ ──────────────────── ►│   Tiled Inference      │
+│  (Projects, │                       │   PyTorch SRCNN,       │
+│ Analytics)  │ ──────────────────── ►│   GEE Python API, CDSE │
 └─────────────┘                       └───────────┬────────────┘
                                                    │ read/write
                                                    ▼
 ┌──────────────────────────────────────────────────────────────┐
 │             MinIO Object Storage (S3-Compatible)             │
-│   projects/1/inputs/<uuid>_file.tif                          │
-│   projects/1/outputs/sr_<uuid>_file.tif                      │
+│   projects/1/inputs/sar_uuid.tif                             │
+│   projects/1/inputs/realtime_uuid.tif                        │
+│   projects/1/outputs/sr_realtime_uuid.tif                    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,27 +83,27 @@ The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** e
 ### 🎨 Frontend (`/client`)
 | Tech | Purpose |
 |------|---------|
-| React 18 + Vite | SPA framework with HMR dev server |
-| Tailwind CSS | Custom design system with dark mode & glassmorphism |
-| React-Leaflet | Interactive satellite map with image overlays |
-| Axios | HTTP client for REST API calls |
+| **React 18 + Vite** | SPA framework with HMR dev server |
+| **Tailwind CSS** | Custom design system with dark mode & glassmorphism |
+| **React-Leaflet** | Interactive satellite map with image overlays & BBox Draw controls |
+| **Axios** | HTTP client for REST API calls |
 
 ### ⚙️ Backend API (`/server`)
 | Tech | Purpose |
 |------|---------|
-| FastAPI | High-performance async REST API |
-| SQLAlchemy (Async) | ORM for PostgreSQL & Alembic Migrations |
-| Rasterio / GDAL | GeoTIFF parsing, CRS reprojection, thumbnail generation |
-| Pydantic v2 | Request/response validation and serialization |
-| MinIO SDK | S3-compatible object storage client |
+| **FastAPI** | High-performance async REST API |
+| **SQLAlchemy (Async)** | ORM for PostgreSQL & Alembic Migrations |
+| **Celery + Redis** | Background job queueing for heavy ML and API fetching |
+| **Rasterio / GDAL** | GeoTIFF parsing, CRS reprojection, and bounds extraction |
+| **MinIO SDK** | S3-compatible object storage client |
 
-### 🧠 Machine Learning & Analytics
+### 🧠 Machine Learning, Earth Engine, & Analytics
 | Tech | Purpose |
 |------|---------|
-| PyTorch | SRCNN model training and inference |
-| NumPy | High-speed analytical matrix operations (NDVI, NDWI, Z-scores) |
-| Rasterio | Tiled read/write of massive GeoTIFFs |
-| Ollama | Local LLM inference augmented with database tools |
+| **PyTorch** | SRCNN model inference for super-resolving Sentinel-2 imagery |
+| **Google Earth Engine (earthengine-api)** | Cloud-masked composite generation and historical Landsat analysis |
+| **Sentinel Hub (oauthlib)** | OAuth2 authentication and OData API interaction for CDSE |
+| **NumPy** | High-speed analytical matrix operations (NDVI, Backscatter, Slope calculations) |
 
 ---
 
@@ -112,18 +111,25 @@ The system leverages a modern tech stack to handle **multi-gigabyte GeoTIFFs** e
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) *(optional, but recommended)*
+- Access to **Copernicus Data Space Ecosystem (CDSE)** credentials (added to `.env`)
+- Access to **Google Earth Engine** service account credentials (`gee-key.json` added to backend config)
 
-### 1. Clone & Start
+### 1. Clone & Configure
 
 ```bash
 git clone https://github.com/Pratik-kr21/GeoSR-AI.git
 cd GeoSR-AI
+```
+Create a `.env` file in the root directory following the format in `.env.example`. Be sure to insert your CDSE client ID/secret.
+
+### 2. Start Services
+
+```bash
 docker-compose up -d --build
 ```
 Wait ~30 seconds for all services to become healthy.
 
-### 2. Initialize the Database & Storage
+### 3. Initialize the Database & Storage
 
 ```bash
 # Run Alembic migrations to build schemas
@@ -133,7 +139,7 @@ docker-compose exec backend alembic upgrade head
 docker-compose exec backend python seed_dataset.py
 ```
 
-### 3. Open the App
+### 4. Open the App
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
@@ -145,34 +151,29 @@ docker-compose exec backend python seed_dataset.py
 
 ## 🌐 Usage Guide
 
-### 1. Live Fetching & Enhancing
-1. On the **Dashboard**, click the **🛰 Fetch Realtime** button to open the live data panel.
-2. Enter coordinates (or click on the map) and click **Fetch Latest Imagery**. 
-   - The backend will instantly crop and download a live 4-band GeoTIFF (Red, Green, Blue, NIR) via the **Copernicus Sentinel Hub Process API**.
-   - **Open-Meteo** live weather data (precipitation, temperature) will also be fetched for that exact coordinate.
-3. Once the raw image appears on the map, you can inspect it.
-4. Click **Enhance Imagery (Super-Resolution)** to trigger the PyTorch SRCNN Celery job. The enhanced (2.5m) layer will overlay onto the map.
+### 1. Live Fetching & Bounding Box (AOI) Draw
+1. On the **Dashboard**, use the map's **Rectangle Draw Tool** to select an Area of Interest (AOI). The exact center coordinates will be instantly saved in the background.
+2. Click the **🛰 Fetch Realtime** button to open the live data panel.
+3. Select your desired sensor:
+   - **Sentinel-2 (Optical)**
+   - **Sentinel-1 (SAR)**
+   - **Copernicus DEM (Terrain)**
+   - **Cloud-Masked Composite (GEE)**
+4. Click **Fetch Imagery**. The backend will instantly crop, download, and render the GeoTIFF tightly within your drawn bounding box.
 
-### 2. GeoIntelligence Analytics
-- Navigate to the **Intelligence** page and click **Run Intelligence Analysis**.
-- View **NDVI**, **NDWI**, **Change Metrics**, and a breakdown of **Anomaly Zones**.
-- The analysis utilizes the original 10m Sentinel-2 bands (including the dynamically downloaded Near-Infrared `B08` band) to ensure scientific accuracy, completely separated from the SRCNN outputs.
+### 2. Super-Resolution Enhancement
+1. After fetching **Sentinel-2** imagery, click **Run Enhancement**.
+2. A background Celery job will spin up, process the multi-gigabyte TIFF through the PyTorch SRCNN model in overlapping tiles, and dynamically overlay the sharpened 2.5m resolution output on top of the map.
 
-### 3. Risk Assessment
-- Go to **Risk Analysis** to see the unified **GeoRisk Index**.
-- This index scores out of 100 based on vegetation stress, temporal changes, anomalies, and the **live Open-Meteo weather data** acquired during the initial fetch.
+### 3. Multi-Sensor Data Export
+1. On the **Dashboard**, click **Export** to access the Multi-Sensor Data Hub.
+2. Click **Generate Unified Export**. The backend merges calculated NDVI (Sentinel-2), SAR Backscatter (Sentinel-1), and Elevation Stats (DEM) into a singular CSV report.
 
-### 4. Temporal Intelligence
-- Use **Change Detection** to contrast two different MinIO objects, surfacing critical spectral shifts and hotspots.
-- Use **Timeline** to view historical spectral index records across analysis runs via Sparkline charts.
-
-### 5. Tool-Augmented GeoAssist
-Navigate to **GeoAssist** and ask complex questions like:
-- *"Why is the GeoRisk score high today?"*
-- *"Explain the current satellite analysis and vegetation anomalies."*
-- *"What does the validation PSNR score indicate about the AI enhancement?"*
-
-The AI runs locally via Ollama, using provided Python tools to read real database metrics before answering.
+### 4. Historical Comparison (Landsat Multi-Decadal)
+1. After drawing your AOI on the Dashboard, navigate to the **Historical Comparison** page.
+2. The coordinates of your AOI will be **automatically populated**.
+3. Select target decades (e.g., 1990, 2000, 2023) and click **Run Historical Analysis**.
+4. The system queries Google Earth Engine's Landsat archives and plots long-term vegetation (NDVI) shifts in a dynamic chart.
 
 ---
 
@@ -182,55 +183,23 @@ Base URL: `http://localhost:8000/api/v1`
 
 | Module | Endpoints |
 |--------|-----------|
-| **Projects & Files** | `GET /projects/`, `POST /projects/`, `POST /upload/{id}` |
-| **Realtime Data** | `POST /realtime/fetch/{id}`, `GET /realtime/latest/{id}` |
-| **Super-Resolution** | `POST /super-resolution/{id}/enhance`, `GET /jobs/{id}/status` |
-| **Intelligence** | `POST /intelligence/{id}/analyze`, `GET /intelligence/{id}/summary` |
-| **Change Detection** | `POST /change-detection/{id}`, `GET /change-detection/{id}` |
-| **GeoRisk & Anomalies**| `GET /risk/{id}`, `GET /anomalies/{id}` |
-| **Map & Visuals** | `GET /map/{id}/.../thumbnail`, `GET /map/{id}/ndvi-heatmap` |
-| **GeoAssist LLM** | `POST /assistant/{id}/query` |
+| **Projects** | `GET /projects/`, `POST /projects/` |
+| **Realtime Data (CDSE & GEE)**| `POST /realtime/fetch-and-process/{id}`, `POST /realtime/fetch-sar/{id}`, `POST /realtime/fetch-dem/{id}`, `POST /realtime/fetch-cloudfree/{id}` |
+| **Historical & Intelligence** | `POST /realtime/historical-analysis/{id}`, `POST /intelligence/{id}/analyze` |
+| **GeoRisk**| `GET /risk/{id}` |
+| **Map visual layers** | `GET /map/{id}/inputs/{file_id}/thumbnail`, `GET /map/{id}/inputs/{file_id}/bounds` |
+| **Data Export** | `POST /export/multi-sensor/{id}`, `GET /export/download/{id}` |
 
 Full interactive Swagger docs at: **http://localhost:8000/docs**
-
----
-
-## 📁 Project Structure
-
-```text
-GeoSR-AI/
-├── client/src/
-│   ├── pages/
-│   │   ├── Dashboard.tsx          # Upload + Map + Intel Summary
-│   │   ├── IntelligencePage.tsx   # NDVI, NDWI, Anomalies
-│   │   ├── RiskAnalysisPage.tsx   # GeoRisk gauge + weather
-│   │   ├── ChangeDetectionPage.tsx# Temporal difference analysis
-│   │   ├── TimelinePage.tsx       # Historical sparklines
-│   │   ├── GeoAssistPage.tsx      # Tool-augmented LLM chat
-│   │   └── ValidationPage.tsx     # PSNR/SSIM metrics
-│   └── components/MapViewer.tsx   # React-Leaflet with dynamic layers
-│
-└── server/app/
-    ├── api/                       # FastAPI route handlers (intelligence, risk, assistant)
-    ├── services/
-    │   ├── inference_service.py   # PyTorch SRCNN runner
-    │   ├── spectral_service.py    # NDVI/NDWI computations
-    │   ├── risk_service.py        # GeoRisk weighting & Open-Meteo
-    │   ├── anomaly_service.py     # Statistical stress detection
-    │   ├── change_service.py      # Temporal comparisons
-    │   └── ollama_service.py      # Tool-augmented LLM integration
-    ├── workers/                   # Celery queue and background tasks
-    └── models.py                  # PostgreSQL DB Schema definitions
-```
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/intelligence-update`
+2. Create a feature branch: `git checkout -b feature/awesome-feature`
 3. Make your changes and run `npx tsc --noEmit` in `/client`
-4. Commit and push: `git push origin feature/intelligence-update`
+4. Commit and push: `git push origin feature/awesome-feature`
 5. Open a Pull Request
 
 ---
