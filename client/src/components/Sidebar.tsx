@@ -4,11 +4,11 @@ const navItems: { id: Page; label: string; icon: string; badge?: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "⬡" },
   { id: "projects", label: "Projects", icon: "◫" },
   { id: "intelligence", label: "Intelligence", icon: "◈", badge: "NEW" },
+  { id: "sensor-data", label: "Sensor Data", icon: "📡" },
   { id: "timeline", label: "Timeline", icon: "◷" },
-  { id: "change-detection", label: "Change Detection", icon: "⇌" },
   { id: "risk-analysis", label: "Risk Analysis", icon: "⚠" },
   { id: "validation", label: "Validation", icon: "◈" },
-  { id: "geoassist", label: "GeoAssist AI", icon: "◎", badge: "AI" },
+  { id: "historical", label: "Historical", icon: "◷" },
 ];
 
 export default function Sidebar({
