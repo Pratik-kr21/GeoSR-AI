@@ -181,3 +181,99 @@ def fetch_and_process_realtime(project_id: int, latitude: float, longitude: floa
         }
 
     return asyncio.run(_run())
+
+
+@celery_app.task(name="app.workers.tasks.fetch_sar_background")
+def fetch_sar_background(job_id: str, project_id: int, latitude: float, longitude: float, buffer_km: float = 5.0, days_back: int = 30, bbox: list = None):
+    from app.services.realtime_service import realtime_service
+    from app.services.sar_service import sar_service
+    from app.services.storage_service import storage_service
+    import os
+    
+    try:
+        asyncio.run(update_job_status(job_id, "processing"))
+        local_path, date, cloud, bounds, meta = realtime_service.fetch_sentinel1_geotiff(
+            lat=latitude, lon=longitude, buffer_km=buffer_km, days_back=days_back, bbox=bbox
+        )
+        
+        # Analyze SAR
+        analysis = sar_service.analyze_sar_scene(local_path)
+        
+        # Upload
+        object_name = f"projects/{project_id}/inputs/sar_{os.path.basename(local_path)}"
+        storage_service.upload_file(local_path, object_name)
+        os.remove(local_path)
+        
+        asyncio.run(update_job_status(job_id, "completed"))
+        return {"status": "completed", "object_name": object_name, "analysis": analysis}
+    except Exception as e:
+        asyncio.run(update_job_status(job_id, "failed"))
+        return {"status": "failed", "error": str(e)}
+
+@celery_app.task(name="app.workers.tasks.fetch_dem_background")
+def fetch_dem_background(job_id: str, project_id: int, latitude: float, longitude: float, buffer_km: float = 5.0, bbox: list = None):
+    from app.services.realtime_service import realtime_service
+    from app.services.terrain_service import terrain_service
+    from app.services.storage_service import storage_service
+    import os
+    
+    try:
+        asyncio.run(update_job_status(job_id, "processing"))
+        local_path, bounds = realtime_service.fetch_copernicus_dem(
+            lat=latitude, lon=longitude, buffer_km=buffer_km, bbox=bbox
+        )
+        
+        elev_stats = terrain_service.compute_elevation_stats(local_path)
+        slope_stats = terrain_service.compute_slope(local_path)
+        low_lying = terrain_service.compute_low_lying_fraction(local_path)
+        
+        stats = {**elev_stats, **slope_stats, **low_lying}
+        
+        object_name = f"projects/{project_id}/inputs/dem_{os.path.basename(local_path)}"
+        storage_service.upload_file(local_path, object_name)
+        os.remove(local_path)
+        
+        asyncio.run(update_job_status(job_id, "completed"))
+        return {"status": "completed", "object_name": object_name, "stats": stats}
+    except Exception as e:
+        asyncio.run(update_job_status(job_id, "failed"))
+        return {"status": "failed", "error": str(e)}
+
+@celery_app.task(name="app.workers.tasks.fetch_gee_composite_background")
+def fetch_gee_composite_background(job_id: str, project_id: int, latitude: float, longitude: float, buffer_km: float = 5.0, days_back: int = 30, max_cloud_cover: int = 60, bbox: list = None):
+    from app.services.gee_service import gee_service
+    try:
+        asyncio.run(update_job_status(job_id, "processing"))
+        result = gee_service.fetch_cloud_masked_composite(
+            project_id=project_id, lat=latitude, lon=longitude, buffer_km=buffer_km, days_back=days_back, scene_cloud_threshold=max_cloud_cover, bbox=bbox
+        )
+        
+        if "error" in result:
+            asyncio.run(update_job_status(job_id, "failed"))
+            return {"status": "failed", "error": result["error"]}
+            
+        asyncio.run(update_job_status(job_id, "completed"))
+        return result
+    except Exception as e:
+        asyncio.run(update_job_status(job_id, "failed"))
+        return {"status": "failed", "error": str(e)}
+
+@celery_app.task(name="app.workers.tasks.run_historical_analysis")
+def run_historical_analysis(job_id: str, project_id: int, lat: float, lon: float, buffer_km: float, years: list, season_start: str, season_end: str):
+    from app.services.historical_service import historical_service
+    try:
+        asyncio.run(update_job_status(job_id, "processing"))
+        result = historical_service.analyze_historical_ndvi(
+            project_id=project_id, lat=lat, lon=lon, buffer_km=buffer_km,
+            years=years, season_start=season_start, season_end=season_end
+        )
+        
+        if "error" in result:
+            asyncio.run(update_job_status(job_id, "failed"))
+            return {"status": "failed", "error": result["error"]}
+            
+        asyncio.run(update_job_status(job_id, "completed"))
+        return result
+    except Exception as e:
+        asyncio.run(update_job_status(job_id, "failed"))
+        return {"status": "failed", "error": str(e)}
