@@ -89,7 +89,8 @@ services:
   - type: pserv
     name: minio
     env: image
-    image: quay.io/minio/minio:latest
+    image: 
+      url: quay.io/minio/minio:latest
     dockerCommand: server /data --console-address ":9001"
     disk:
       name: minio_data
@@ -105,7 +106,8 @@ services:
   - type: pserv
     name: ollama
     env: image
-    image: ollama/ollama:latest
+    image: 
+      url: ollama/ollama:latest
     disk:
       name: ollama_data
       mountPath: /root/.ollama
