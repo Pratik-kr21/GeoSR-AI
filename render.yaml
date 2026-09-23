@@ -84,6 +84,7 @@ services:
   - type: redis
     name: geosrai-redis
     plan: free
+    ipAllowList: [] # Empty array means only internal Render services can access it
 
   # 4. MinIO (Storage)
   - type: pserv
