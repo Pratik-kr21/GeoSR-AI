@@ -1,0 +1,119 @@
+services:
+  # 1. FastAPI Web Service (Backend)
+  - type: web
+    name: geosrai-backend
+    env: docker
+    rootDir: server
+    dockerfilePath: Dockerfile
+    plan: starter # ML apps often need more RAM than the free tier provides
+    envVars:
+      - key: POSTGRES_SERVER
+        fromDatabase:
+          name: geosrai-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: geosrai-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: geosrai-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: geosrai-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: geosrai-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: geosrai-redis
+          property: host
+      - key: MINIO_ENDPOINT
+        value: minio:9000
+      - key: OLLAMA_URL
+        value: http://ollama:11434
+      - key: OPEN_METEO_BASE_URL
+        value: https://api.open-meteo.com/v1/forecast
+      - key: ALLOWED_ORIGINS
+        value: "*" # Update this with your Vercel URL later for security
+
+  # 2. Celery Worker
+  - type: worker
+    name: geosrai-worker
+    env: docker
+    rootDir: server
+    dockerfilePath: Dockerfile
+    dockerCommand: celery -A app.workers.celery_app worker --loglevel=info -Q geosrai_queue --pool=solo
+    plan: starter
+    envVars:
+      - key: POSTGRES_SERVER
+        fromDatabase:
+          name: geosrai-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: geosrai-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: geosrai-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: geosrai-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: geosrai-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: geosrai-redis
+          property: host
+      - key: MINIO_ENDPOINT
+        value: minio:9000
+      - key: OPEN_METEO_BASE_URL
+        value: https://api.open-meteo.com/v1/forecast
+
+  # 3. Redis Service
+  - type: redis
+    name: geosrai-redis
+    plan: free
+
+  # 4. MinIO (Storage)
+  - type: pserv
+    name: minio
+    env: docker
+    image: quay.io/minio/minio:latest
+    dockerCommand: server /data --console-address ":9001"
+    disk:
+      name: minio_data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: MINIO_ROOT_USER
+        value: minioadmin
+      - key: MINIO_ROOT_PASSWORD
+        value: minioadmin
+
+  # 5. Ollama (LLM)
+  - type: pserv
+    name: ollama
+    env: docker
+    image: ollama/ollama:latest
+    disk:
+      name: ollama_data
+      mountPath: /root/.ollama
+      sizeGB: 10
+
+databases:
+  # 6. PostgreSQL Database (Render Postgres comes with PostGIS installed!)
+  - name: geosrai-db
+    databaseName: geosrai
+    user: geosrai
+    plan: starter
