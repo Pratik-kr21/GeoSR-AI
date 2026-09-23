@@ -88,7 +88,7 @@ services:
   # 4. MinIO (Storage)
   - type: pserv
     name: minio
-    env: docker
+    env: image
     image: quay.io/minio/minio:latest
     dockerCommand: server /data --console-address ":9001"
     disk:
@@ -104,7 +104,7 @@ services:
   # 5. Ollama (LLM)
   - type: pserv
     name: ollama
-    env: docker
+    env: image
     image: ollama/ollama:latest
     disk:
       name: ollama_data
