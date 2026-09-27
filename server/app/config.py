@@ -25,9 +25,7 @@ class Settings(BaseSettings):
     def REDIS_URL(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
-    # Ollama
-    OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3")
+
 
     # MinIO
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
@@ -36,8 +34,6 @@ class Settings(BaseSettings):
     MINIO_BUCKET_NAME: str = os.getenv("MINIO_BUCKET_NAME", "geosrai-data")
     MINIO_SECURE: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
     
-    # Ollama
-    OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
     # ─── CDSE (Copernicus Data Space Ecosystem) ────────────────────────────────
     # Register free at https://dataspace.copernicus.eu/

@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
-from ollama import AsyncClient
 
 from app.schemas.assistant import AssistantQuery, AssistantResponse
 from app.database import get_db
@@ -174,46 +173,10 @@ async def ask_assistant(project_id: int, query: AssistantQuery, db: AsyncSession
     import json
     tool_context = json.dumps(tool_data, indent=2, default=str)
 
-    system_prompt = f"""You are GeoAssist, an AI Decision Intelligence agent for satellite geospatial analysis.
-You are helping the user analyze project '{project.name}' located at '{project.location}'.
-
-IMPORTANT RULES:
-1. Do NOT fabricate or estimate any numerical values. Only use data from the ANALYTICAL DATA section below.
-2. If data is unavailable (available=false), say so clearly rather than guessing.
-3. Always mention confidence levels when discussing analytical indicators.
-4. Clearly distinguish analytical estimates from validated ground truth.
-5. Use terminology: "Estimated", "Prototype Indicator", "Analytical Confidence: X%", "Detected Anomaly".
-
-ANALYSIS JOBS:
-{job_context if jobs else "No super-resolution jobs run yet."}
-
-ANALYTICAL DATA (fetched from real backend tools — do NOT modify these values):
-{tool_context}
-
-Based on the above real data, answer the user's question. Be concise and evidence-based.
-If no analysis has been run, suggest the user run the intelligence analysis first.
-"""
-
-    try:
-        client = AsyncClient(host=settings.OLLAMA_URL)
-        response = await client.chat(
-            model=settings.OLLAMA_MODEL,
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': query.message}
-            ]
-        )
-        reply = response['message']['content']
-        return AssistantResponse(
-            response=reply,
-            sources=sources_used
-        )
-    except Exception as e:
-        print("Ollama Error:", e)
-        # Graceful degradation: return the tool data as plain text if Ollama is down
-        fallback = f"GeoAssist AI is temporarily unavailable. Here is the raw analytical data:\n\n{tool_context}"
-        return AssistantResponse(
-            response=fallback,
-            sources=sources_used
-        )
+    # Ollama has been removed, return raw analytical data directly
+    fallback = f"GeoAssist AI is currently in data-only mode. Here is the raw analytical data:\n\n{tool_context}"
+    return AssistantResponse(
+        response=fallback,
+        sources=sources_used
+    )
 

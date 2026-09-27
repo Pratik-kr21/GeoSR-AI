@@ -34,8 +34,6 @@ services:
           property: host
       - key: MINIO_ENDPOINT
         value: minio:9000
-      - key: OLLAMA_URL
-        value: http://ollama:11434
       - key: OPEN_METEO_BASE_URL
         value: https://api.open-meteo.com/v1/forecast
       - key: ALLOWED_ORIGINS
@@ -102,17 +100,6 @@ services:
         value: minioadmin
       - key: MINIO_ROOT_PASSWORD
         value: minioadmin
-
-  # 5. Ollama (LLM)
-  - type: pserv
-    name: ollama
-    env: image
-    image: 
-      url: ollama/ollama:latest
-    disk:
-      name: ollama_data
-      mountPath: /root/.ollama
-      sizeGB: 10
 
 databases:
   # 6. PostgreSQL Database (Render Postgres comes with PostGIS installed!)

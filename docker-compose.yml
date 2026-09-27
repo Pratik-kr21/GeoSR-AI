@@ -38,7 +38,6 @@ services:
       - POSTGRES_PORT=5432
       - REDIS_HOST=redis
       - MINIO_ENDPOINT=minio:9000
-      - OLLAMA_URL=http://ollama:11434
       - OPEN_METEO_BASE_URL=https://api.open-meteo.com/v1/forecast
     depends_on:
       - db
@@ -81,23 +80,6 @@ services:
               count: all
               capabilities: [gpu]
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    # NOTE: The deploy block enables GPU support if the host has NVIDIA docker installed.
-    # If the host doesn't have a GPU, Ollama will gracefully fallback to CPU.
-
 volumes:
   postgres_data:
   minio_data:
-  ollama_data:
