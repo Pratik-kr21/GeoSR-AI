@@ -19,10 +19,15 @@ class Settings(BaseSettings):
     
     # Redis
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
-    
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6380"))
+    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "")
+    REDIS_SSL: bool = os.getenv("REDIS_SSL", "true").lower() == "true"
+
     @property
     def REDIS_URL(self) -> str:
+        if self.REDIS_PASSWORD:
+            # Azure Redis requires SSL and password
+            return f"rediss://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/0"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
 
