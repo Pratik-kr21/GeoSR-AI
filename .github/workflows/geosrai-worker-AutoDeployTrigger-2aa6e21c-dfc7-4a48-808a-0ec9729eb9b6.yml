@@ -11,6 +11,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for Azure OIDC login
+      contents: read
 
     steps:
       - name: Azure Login
