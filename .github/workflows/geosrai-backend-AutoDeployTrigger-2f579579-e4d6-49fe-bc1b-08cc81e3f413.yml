@@ -23,6 +23,9 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
+      - name: Set up Docker Buildx (required for caching)
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -30,6 +33,10 @@ jobs:
           file: ./server/Dockerfile
           push: true
           tags: geosrairegistry.azurecr.io/geosrai-backend:latest
+          # Cache layers so PyTorch/GDAL are NOT reinstalled unless requirements.txt changes
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
 
       - name: Deploy new revision to Backend Container App
         uses: azure/login@v2
