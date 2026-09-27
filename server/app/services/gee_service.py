@@ -20,20 +20,36 @@ class GEEService:
     def initialize(self):
         if self.is_initialized:
             return True
-            
-        key_path = settings.GEE_CREDENTIALS_PATH
-        
-        if not key_path or not os.path.exists(key_path):
-            logger.warning(f"GEE Setup Warning: Credentials not found at {key_path}. Earth Engine features will be disabled.")
-            return False
-            
+
+        key_data = None
+
+        # First try loading from JSON string env var (for cloud/Container App deployment)
+        gee_json = os.getenv("GEE_CREDENTIALS_JSON", "")
+        if gee_json:
+            try:
+                key_data = json.loads(gee_json)
+                logger.info("GEE: Loaded credentials from GEE_CREDENTIALS_JSON env var.")
+            except Exception as e:
+                logger.warning(f"GEE: Failed to parse GEE_CREDENTIALS_JSON: {e}")
+
+        # Fallback: load from file path (for local development)
+        if not key_data:
+            key_path = settings.GEE_CREDENTIALS_PATH
+            if not key_path or not os.path.exists(key_path):
+                logger.warning(f"GEE Setup Warning: Credentials not found at '{key_path}' and GEE_CREDENTIALS_JSON not set. Earth Engine features will be disabled.")
+                return False
+            try:
+                with open(key_path, 'r') as f:
+                    key_data = json.load(f)
+                logger.info(f"GEE: Loaded credentials from file {key_path}.")
+            except Exception as e:
+                logger.error(f"GEE: Failed to read credentials file: {e}")
+                return False
+
         try:
-            with open(key_path, 'r') as f:
-                key_data = json.load(f)
-                
             credentials = ee.ServiceAccountCredentials(
-                key_data.get("client_email", settings.GEE_SERVICE_ACCOUNT_EMAIL), 
-                key_file=key_path
+                key_data.get("client_email", settings.GEE_SERVICE_ACCOUNT_EMAIL),
+                key_data=json.dumps(key_data)
             )
             ee.Initialize(credentials, project=settings.GEE_PROJECT_ID or key_data.get("project_id"))
             self.is_initialized = True
