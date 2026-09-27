@@ -46,13 +46,6 @@ services:
     volumes:
       - ./server:/app
       - ./server/data:/app/data
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
   worker:
     build: ./server
@@ -72,13 +65,6 @@ services:
     volumes:
       - ./server:/app
       - ./server/data:/app/data
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
 volumes:
   postgres_data:
