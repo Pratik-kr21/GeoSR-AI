@@ -1,63 +1,67 @@
-from minio import Minio
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
+from datetime import datetime, timezone
 from app.config import settings
 
 class StorageService:
     def __init__(self):
-        self.client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE
+        self.client = BlobServiceClient(
+            account_url=f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
+            credential=settings.AZURE_STORAGE_ACCOUNT_KEY
         )
-        self.bucket_name = settings.MINIO_BUCKET_NAME
-        self._ensure_bucket_exists()
+        self.container_name = settings.MINIO_BUCKET_NAME
+        self._ensure_container_exists()
 
-    def _ensure_bucket_exists(self):
-        if not self.client.bucket_exists(self.bucket_name):
-            self.client.make_bucket(self.bucket_name)
+    def _ensure_container_exists(self):
+        container_client = self.client.get_container_client(self.container_name)
+        if not container_client.exists():
+            self.client.create_container(self.container_name)
 
     def upload_file(self, file_path: str, object_name: str):
         """
-        Uploads a local file to MinIO.
+        Uploads a local file to Azure Blob Storage.
         Returns the object name on success.
         """
-        self.client.fput_object(
-            self.bucket_name,
-            object_name,
-            file_path,
+        blob_client = self.client.get_blob_client(
+            container=self.container_name,
+            blob=object_name
         )
+        with open(file_path, "rb") as data:
+            blob_client.upload_blob(data, overwrite=True)
         return object_name
-        
+
     def download_file(self, object_name: str, file_path: str):
         """
-        Downloads a file from MinIO to a local path.
+        Downloads a file from Azure Blob Storage to a local path.
         """
-        self.client.fget_object(
-            self.bucket_name,
-            object_name,
-            file_path,
+        blob_client = self.client.get_blob_client(
+            container=self.container_name,
+            blob=object_name
         )
+        with open(file_path, "wb") as f:
+            data = blob_client.download_blob()
+            data.readinto(f)
         return file_path
 
     def get_presigned_url(self, object_name: str, expires_delta=None):
         """
-        Generates a presigned URL for downloading an object directly from MinIO.
+        Generates a presigned SAS URL for downloading a blob directly from Azure.
         """
         from datetime import timedelta
         if expires_delta is None:
             expires_delta = timedelta(hours=1)
-        # For localhost deployment, we might need to replace minio:9000 with localhost:9000
-        # if the frontend is accessing it from outside the docker network
-        url = self.client.presigned_get_object(
-            self.bucket_name,
-            object_name,
-            expires=expires_delta
+
+        sas_token = generate_blob_sas(
+            account_name=settings.AZURE_STORAGE_ACCOUNT_NAME,
+            container_name=self.container_name,
+            blob_name=object_name,
+            account_key=settings.AZURE_STORAGE_ACCOUNT_KEY,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.now(timezone.utc) + expires_delta
         )
-        
-        # Hack for local dev: replace internal docker hostname with localhost
-        if "minio:9000" in url:
-            url = url.replace("minio:9000", "localhost:9000")
-            
+        url = (
+            f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+            f"/{self.container_name}/{object_name}?{sas_token}"
+        )
         return url
 
 storage_service = StorageService()

@@ -27,12 +27,10 @@ class Settings(BaseSettings):
 
 
 
-    # MinIO
-    MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-    MINIO_ACCESS_KEY: str = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-    MINIO_SECRET_KEY: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+    # Azure Blob Storage (replaces MinIO)
+    AZURE_STORAGE_ACCOUNT_NAME: str = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "")
+    AZURE_STORAGE_ACCOUNT_KEY: str = os.getenv("AZURE_STORAGE_ACCOUNT_KEY", "")
     MINIO_BUCKET_NAME: str = os.getenv("MINIO_BUCKET_NAME", "geosrai-data")
-    MINIO_SECURE: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
     
 
     # ─── CDSE (Copernicus Data Space Ecosystem) ────────────────────────────────
