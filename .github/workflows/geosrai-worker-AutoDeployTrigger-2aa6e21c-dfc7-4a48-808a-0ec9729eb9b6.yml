@@ -1,49 +1,31 @@
-name: Trigger auto deployment for geosrai-worker
+name: Deploy GeoSR-AI Worker to Azure Container Apps
 
-# When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
   push:
-    branches: 
-      [ main ]
+    branches: [ main ]
     paths:
-    - '**'
-    - '.github/workflows/geosrai-worker-AutoDeployTrigger-2aa6e21c-dfc7-4a48-808a-0ec9729eb9b6.yml'
-
-  # Allow manual trigger 
-  workflow_dispatch:      
+      - 'server/**'
+      - '.github/workflows/geosrai-worker-AutoDeployTrigger-2aa6e21c-dfc7-4a48-808a-0ec9729eb9b6.yml'
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    permissions: 
-      id-token: write #This is required for requesting the OIDC JWT Token
-      contents: read #Required when GH token is used to authenticate with private repo
 
     steps:
-      - name: Checkout to the branch
-        uses: actions/checkout@v2
-
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.GEOSRAIWORKER_AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.GEOSRAIWORKER_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.GEOSRAIWORKER_AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.GEOSRAIBACKEND_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.GEOSRAIBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.GEOSRAIBACKEND_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push container image to registry
-        uses: azure/container-apps-deploy-action@v2
+      - name: Update Worker Container App with latest backend image
+        uses: azure/cli@v2
         with:
-          appSourcePath: ${{ github.workspace }}server
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
-          registryUrl: geosrairegistry.azurecr.io
-          registryUsername: ${{ secrets.GEOSRAIWORKER_REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.GEOSRAIWORKER_REGISTRY_PASSWORD }}
-          containerAppName: geosrai-worker
-          resourceGroup: GeoSR-Group
-          imageToBuild: geosrairegistry.azurecr.io/geosrai-worker:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
-
-
+          azcliversion: latest
+          inlineScript: |
+            az containerapp update \
+              --name geosrai-worker \
+              --resource-group GeoSR-Group \
+              --image geosrairegistry.azurecr.io/geosrai-backend:latest
