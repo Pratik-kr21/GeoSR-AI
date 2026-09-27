@@ -1,1 +1,0 @@
-Postgres_server = geosrai-db.postgres.database.azure.com

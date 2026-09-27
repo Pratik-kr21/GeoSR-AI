@@ -192,3 +192,4 @@ server/alembic/versions/*
 server/gee_key.json
 *.pem
 *.key
+all env.txt
