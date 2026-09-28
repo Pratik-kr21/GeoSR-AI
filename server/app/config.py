@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URI(self) -> str:
         server = self.POSTGRES_SERVER
-        print(f"CRITICAL DEBUG: POSTGRES_SERVER is {repr(server)}")
+        raise ValueError(f"CRITICAL DEBUG: SERVER='{server}' PORT='{self.POSTGRES_PORT}'")
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{server}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Redis
