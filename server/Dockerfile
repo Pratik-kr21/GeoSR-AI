@@ -24,5 +24,8 @@ RUN pip install --default-timeout=1000 requests>=2.31.0 sentinel-images-download
 # Copy application code
 COPY . .
 
-# Run the application
+# Make the worker startup script executable
+RUN chmod +x /app/worker-start.sh
+
+# Run the application (override this with /app/worker-start.sh for the Celery worker)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
