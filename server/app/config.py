@@ -7,23 +7,21 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database
-    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
-    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "geosrai")
-    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "password")
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "geosrai")
-    POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5433")
+    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost").strip()
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "geosrai").strip()
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "password").strip()
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "geosrai").strip()
+    POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432").strip()
     
     @property
     def DATABASE_URI(self) -> str:
-        server = self.POSTGRES_SERVER
-        raise ValueError(f"CRITICAL DEBUG: SERVER='{server}' PORT='{self.POSTGRES_PORT}'")
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{server}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Redis
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6380"))
-    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "")
-    REDIS_SSL: bool = os.getenv("REDIS_SSL", "true").lower() == "true"
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost").strip()
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6380").strip())
+    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "").strip()
+    REDIS_SSL: bool = os.getenv("REDIS_SSL", "true").strip().lower() == "true"
 
     @property
     def REDIS_URL(self) -> str:
