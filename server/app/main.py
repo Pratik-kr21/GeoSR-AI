@@ -1,10 +1,23 @@
+from contextlib import asynccontextmanager
+import subprocess
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Running database migrations from FastAPI lifespan...", flush=True)
+    try:
+        subprocess.run(["alembic", "upgrade", "head"], check=True)
+        print("Migrations complete.", flush=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Migrations failed: {e}", flush=True)
+    yield
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
+    lifespan=lifespan,
 )
 
 # Set up CORS for the frontend
