@@ -37,20 +37,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
-      - name: Deploy new revision to Backend Container App
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.GEOSRAIBACKEND_AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.GEOSRAIBACKEND_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.GEOSRAIBACKEND_AZURE_SUBSCRIPTION_ID }}
-
-      - name: Update Container App with new image
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az containerapp update \
-              --name geosrai-backend \
-              --resource-group GeoSR-Group \
-              --image geosrairegistry.azurecr.io/geosrai-backend:latest
+      - name: Image pushed to ACR
+        run: echo "✅ Image pushed to geosrairegistry.azurecr.io/geosrai-backend:latest - Azure will auto-deploy via ACR webhook"
