@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     
     @property
     def DATABASE_URI(self) -> str:
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        server = self.POSTGRES_SERVER
+        print(f"CRITICAL DEBUG: POSTGRES_SERVER is {repr(server)}")
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{server}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Redis
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
