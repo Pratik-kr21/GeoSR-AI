@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost").strip()
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "geosrai").strip()
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "password").strip()
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "geosrai").strip()
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "postgres").strip()
     POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432").strip()
     
     @property
