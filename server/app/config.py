@@ -20,7 +20,7 @@ class Settings(BaseSettings):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{encoded_password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Redis
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost").strip()
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost").strip().rstrip(":")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6380").strip())
     REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "").strip()
     REDIS_SSL: bool = os.getenv("REDIS_SSL", "true").strip().lower() == "true"
@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     @property
     def REDIS_URL(self) -> str:
         if self.REDIS_PASSWORD:
-            # Azure Redis requires SSL and password
-            return f"rediss://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+            # Azure Redis requires SSL, password, and ssl_cert_reqs for Celery
+            return f"rediss://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/0?ssl_cert_reqs=CERT_NONE"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
 
