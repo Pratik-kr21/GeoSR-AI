@@ -24,11 +24,11 @@ RUN pip install --default-timeout=1000 requests>=2.31.0 sentinel-images-download
 # Copy application code
 COPY . .
 
-# Make the worker startup script executable
-RUN chmod +x /app/worker-start.sh
+# Make the worker startup script executable and fix Windows line endings
+RUN sed -i 's/\r$//' /app/worker-start.sh && chmod +x /app/worker-start.sh
 
-# Make the backend startup script executable
-RUN chmod +x /app/start.sh
+# Make the backend startup script executable and fix Windows line endings
+RUN sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh
 
 # Run migrations then start the application (override with /app/worker-start.sh for the Celery worker)
 CMD ["/app/start.sh"]
