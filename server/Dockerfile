@@ -27,5 +27,8 @@ COPY . .
 # Make the worker startup script executable
 RUN chmod +x /app/worker-start.sh
 
-# Run the application (override this with /app/worker-start.sh for the Celery worker)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Make the backend startup script executable
+RUN chmod +x /app/start.sh
+
+# Run migrations then start the application (override with /app/worker-start.sh for the Celery worker)
+CMD ["/app/start.sh"]
