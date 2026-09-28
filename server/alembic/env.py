@@ -3,7 +3,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -19,7 +19,9 @@ from app.config import settings
 # access to the values within the .ini file in use.
 config = context.config
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URI)
+# Do NOT use config.set_main_option here — the URL-encoded password contains
+# '%' characters which configparser treats as interpolation syntax and raises
+# a ValueError. Instead we pass the URL directly to the engine below.
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -71,11 +73,12 @@ async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
 
+    We create the engine directly from settings.DATABASE_URI to avoid
+    configparser interpolation issues with '%' in URL-encoded passwords.
     """
 
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_async_engine(
+        settings.DATABASE_URI,
         poolclass=pool.NullPool,
     )
 
