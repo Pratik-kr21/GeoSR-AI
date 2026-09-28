@@ -8,9 +8,19 @@ from app.config import settings
 async def lifespan(app: FastAPI):
     print("Running database migrations from FastAPI lifespan...", flush=True)
     try:
+        from sqlalchemy.ext.asyncio import create_async_engine
+        from app.database import Base
+        import app.models  # ensure models are loaded
+        
+        engine = create_async_engine(settings.DATABASE_URI)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("SQLAlchemy create_all complete.", flush=True)
+        
+        # Also run alembic to ensure the version table is up to date
         subprocess.run(["alembic", "upgrade", "head"], check=True)
         print("Migrations complete.", flush=True)
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"Migrations failed: {e}", flush=True)
     yield
 
