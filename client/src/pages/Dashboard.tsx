@@ -259,6 +259,8 @@ export default function Dashboard({
     }
   };
 
+  const [showPanel, setShowPanel] = useState(false);
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-navy-900">
       {/* Hidden file input */}
@@ -271,31 +273,42 @@ export default function Dashboard({
       />
       
       {/* Top bar */}
-      <div className="shrink-0 bg-navy-800 border-b border-navy-500/40 px-4 py-2.5 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="font-display font-600 text-sm text-white">
+      <div className="shrink-0 bg-navy-800 border-b border-navy-500/40 px-3 sm:px-4 py-2 sm:py-2.5">
+        {/* Row 1: file name + date */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="font-display font-600 text-xs sm:text-sm text-white truncate">
             {uploadedFilename || sensorNames[sensor]}
           </span>
-          {acquisitionDate && (
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              Date: {acquisitionDate.slice(0, 10)}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {acquisitionDate && (
+              <span className="hidden sm:inline px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                {acquisitionDate.slice(0, 10)}
+              </span>
+            )}
+            {/* Mobile panel toggle */}
+            <button
+              onClick={() => setShowPanel(v => !v)}
+              className="md:hidden px-2.5 py-1.5 rounded-lg border border-navy-500/50 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              {showPanel ? "↑ Hide Panel" : "⚙ Panel"}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Row 2: controls */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {/* Mode Toggle */}
           <div className="flex items-center rounded-lg border border-navy-600 overflow-hidden text-xs">
             <button
               onClick={() => { setInputMode("upload"); setPickMode(false); }}
-              className={`px-3 py-1.5 transition-colors ${inputMode === "upload" ? "bg-navy-600 text-white" : "text-slate-400 hover:text-slate-200"}`}
+              className={`px-2 sm:px-3 py-1.5 transition-colors ${inputMode === "upload" ? "bg-navy-600 text-white" : "text-slate-400 hover:text-slate-200"}`}
             >
-              Upload File
+              Upload
             </button>
             <button
               onClick={() => setInputMode("realtime")}
-              className={`px-3 py-1.5 transition-colors ${inputMode === "realtime" ? "bg-emerald-700 text-white" : "text-slate-400 hover:text-slate-200"}`}
+              className={`px-2 sm:px-3 py-1.5 transition-colors ${inputMode === "realtime" ? "bg-emerald-700 text-white" : "text-slate-400 hover:text-slate-200"}`}
             >
-              🛰 Fetch Realtime
+              🛰 Realtime
             </button>
           </div>
 
@@ -303,7 +316,7 @@ export default function Dashboard({
             <button
               onClick={handleUploadClick}
               disabled={isUploading}
-              className="px-3 py-1.5 rounded-lg border border-navy-500/50 text-xs text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-50"
+              className="px-2 sm:px-3 py-1.5 rounded-lg border border-navy-500/50 text-xs text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-50"
             >
               {isUploading ? "Uploading..." : "Upload GeoTIFF"}
             </button>
@@ -311,39 +324,39 @@ export default function Dashboard({
           {inputMode === "realtime" && (
             <button
               onClick={() => setPickMode(p => !p)}
-              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${pickMode ? "bg-cyan-600 border-cyan-500 text-white" : "bg-navy-700 border-navy-600 text-slate-300 hover:text-white"}`}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs border transition-colors ${pickMode ? "bg-cyan-600 border-cyan-500 text-white" : "bg-navy-700 border-navy-600 text-slate-300 hover:text-white"}`}
             >
-              {pickMode ? "📍 Click map to pick" : "Pick Location"}
+              {pickMode ? "📍 Picking..." : "Pick Loc"}
             </button>
           )}
           <button
             onClick={handleRunEnhancement}
             disabled={isRunning || !objectName || inputMode === "realtime"}
-            className="px-3 py-1.5 rounded-lg bg-blue-electric/15 border border-blue-electric/40 text-xs text-blue-electric hover:bg-blue-electric/25 transition-colors font-display font-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 sm:px-3 py-1.5 rounded-lg bg-blue-electric/15 border border-blue-electric/40 text-xs text-blue-electric hover:bg-blue-electric/25 transition-colors font-display font-600 disabled:opacity-50 disabled:cursor-not-allowed"
             title={inputMode === "realtime" ? 'Use "Fetch & Process" in the panel' : undefined}
           >
-            {isRunning ? "Running..." : "Run Enhancement"}
+            {isRunning ? "Running..." : "Run SR"}
           </button>
           {selectedBbox && (
             <button onClick={handleFetchGEE} disabled={isUploading}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+              className="px-2 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
             >
-              {isUploading ? "Fetching..." : "Fetch Live from GEE"}
+              {isUploading ? "Fetching..." : "Fetch GEE"}
             </button>
           )}
           <button
             onClick={() => setShowExport(true)}
             disabled={status !== "completed"}
-            className="px-3 py-1.5 bg-navy-800 hover:bg-navy-700 text-white border border-navy-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            className="px-2 sm:px-3 py-1.5 bg-navy-800 hover:bg-navy-700 text-white border border-navy-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             Export
           </button>
         </div>
       </div>
 
       {/* Main area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Map area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Map */}
@@ -417,7 +430,7 @@ export default function Dashboard({
 
           {/* Metrics row or Source Description */}
           {inputMode === "upload" || sensor === "sentinel-2" ? (
-            <div className="shrink-0 bg-navy-800/80 border-t border-navy-500/30 px-4 py-3 grid grid-cols-5 gap-3">
+            <div className="shrink-0 bg-navy-800/80 border-t border-navy-500/30 px-3 sm:px-4 py-2 sm:py-3 grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
               {metricCards.map((m) => (
                 <div key={m.label} className="space-y-1">
                   <div className="flex items-baseline justify-between">
@@ -448,8 +461,14 @@ export default function Dashboard({
           )}
         </div>
 
-        {/* Right panel */}
-        <div className="w-64 shrink-0 bg-navy-800 border-l border-navy-500/40 flex flex-col overflow-y-auto">
+        {/* Right panel – desktop always visible, mobile overlay */}
+        <div className={`
+          bg-navy-800 border-l border-navy-500/40 flex flex-col overflow-y-auto
+          md:w-64 md:shrink-0 md:static md:flex
+          ${showPanel
+            ? "absolute bottom-0 left-0 right-0 z-30 max-h-[60vh] border-t border-navy-500/40 border-l-0"
+            : "hidden md:flex"}
+        `}>
           <div className="px-4 py-3 border-b border-navy-500/40">
             <div className="text-xs font-display font-600 text-slate-300 uppercase tracking-wider">Processing Pipeline</div>
           </div>

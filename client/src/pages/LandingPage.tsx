@@ -70,58 +70,58 @@ export default function LandingPage({ onNavigate }: { onNavigate: (p: Page) => v
   return (
     <div className="min-h-full bg-navy-900 grid-bg overflow-y-auto">
       {/* Nav */}
-      <header className="sticky top-0 z-40 bg-navy-900/90 backdrop-blur border-b border-navy-500/30 px-6 lg:px-16 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-navy-900/90 backdrop-blur border-b border-navy-500/30 px-4 sm:px-6 lg:px-16 py-3 sm:py-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-blue-electric flex items-center justify-center text-white font-display font-bold text-sm glow-blue">G</div>
-          <span className="font-display font-700 text-white text-lg">GeoSR-AI</span>
+          <div className="w-7 h-7 rounded bg-blue-electric flex items-center justify-center text-white font-display font-bold text-sm glow-blue shrink-0">G</div>
+          <span className="font-display font-700 text-white text-base sm:text-lg">GeoSR-AI</span>
         </div>
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-4 lg:gap-6">
           <button onClick={() => onNavigate("intelligence")} className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Technology</button>
           <button onClick={() => onNavigate("validation")} className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Validation</button>
-          <a href="https://github.com/Pratik-kr21/GeoSR-AI" target="_blank" rel="noreferrer" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Documentation</a>
+          <a href="https://github.com/Pratik-kr21/GeoSR-AI" target="_blank" rel="noreferrer" className="text-sm text-slate-400 hover:text-slate-200 transition-colors">Docs</a>
         </nav>
         <button
           onClick={() => onNavigate("dashboard")}
-          className="px-4 py-2 rounded-lg bg-blue-electric text-white text-sm font-display font-600 glow-blue hover:bg-blue-600 transition-colors"
+          className="px-3 sm:px-4 py-2 rounded-lg bg-blue-electric text-white text-xs sm:text-sm font-display font-600 glow-blue hover:bg-blue-600 transition-colors whitespace-nowrap"
         >
           Launch App
         </button>
       </header>
 
       {/* Hero */}
-      <section className="px-6 lg:px-16 pt-16 pb-10 max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <section className="px-4 sm:px-6 lg:px-16 pt-10 sm:pt-16 pb-8 sm:pb-10 max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-electric/10 border border-blue-electric/30 text-blue-electric text-xs font-mono mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-electric/10 border border-blue-electric/30 text-blue-electric text-xs font-mono mb-5 sm:mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-electric animate-pulse" />
-              Sentinel-2 · AI-Powered · Scientifically Validated
+              <span className="truncate">Sentinel-2 · AI-Powered · Scientifically Validated</span>
             </div>
-            <h1 className="font-display font-800 text-4xl lg:text-5xl text-white leading-tight mb-5">
+            <h1 className="font-display font-800 text-3xl sm:text-4xl lg:text-5xl text-white leading-tight mb-4 sm:mb-5">
               Turn Medium-Resolution{" "}
               <span className="text-blue-electric text-glow-blue">Satellite Data</span>{" "}
               into Trustworthy High-Resolution Insights.
             </h1>
-            <p className="text-slate-400 text-lg leading-relaxed mb-8">
-              GeoSR-AI enhances Sentinel-2 imagery from 10m resolution to 2.5m–4m using AI-powered super-resolution while preserving geospatial and spectral consistency and clearly visualizing uncertainty.
+            <p className="text-slate-400 text-base sm:text-lg leading-relaxed mb-6 sm:mb-8">
+              GeoSR-AI enhances Sentinel-2 imagery from 10m to 2.5m–4m resolution using AI-powered super-resolution while preserving geospatial accuracy and clearly visualizing uncertainty.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => onNavigate("dashboard")}
-                className="px-6 py-3 rounded-xl bg-blue-electric text-white font-display font-600 text-sm glow-blue hover:bg-blue-600 transition-colors"
+                className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-blue-electric text-white font-display font-600 text-sm glow-blue hover:bg-blue-600 transition-colors"
               >
                 Launch GeoSR-AI
               </button>
               <button
                 onClick={() => onNavigate("validation")}
-                className="px-6 py-3 rounded-xl border border-blue-electric/40 text-blue-electric font-display font-600 text-sm hover:bg-blue-electric/10 transition-colors"
+                className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl border border-blue-electric/40 text-blue-electric font-display font-600 text-sm hover:bg-blue-electric/10 transition-colors"
               >
                 Explore Technology
               </button>
             </div>
             {/* Metric pills */}
-            <div className="flex flex-wrap gap-2 mt-8">
+            <div className="flex flex-wrap gap-2 mt-6 sm:mt-8">
               {metrics.map((m) => (
-                <div key={m.label} className="px-3 py-1.5 rounded-lg bg-navy-800 border border-navy-500/40 hover:border-blue-electric/30 transition-colors">
+                <div key={m.label} className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-navy-800 border border-navy-500/40 hover:border-blue-electric/30 transition-colors">
                   <div className="text-xs font-display font-600 text-white">{m.label}</div>
                   <div className="text-[10px] font-mono text-slate-500">{m.sub}</div>
                 </div>
@@ -130,8 +130,8 @@ export default function LandingPage({ onNavigate }: { onNavigate: (p: Page) => v
           </div>
 
           {/* Before/After Slider */}
-          <div className="relative">
-            <div className="text-center mb-3 flex items-center justify-center gap-4 text-xs font-mono text-slate-500">
+          <div className="relative mt-2 lg:mt-0">
+            <div className="text-center mb-3 flex items-center justify-center gap-3 text-xs font-mono text-slate-500 flex-wrap">
               <span className="text-slate-400">Original Sentinel-2 · 10m</span>
               <span className="w-4 h-px bg-navy-500" />
               <span className="text-blue-electric">GeoSR-AI Enhanced · 2.5m</span>
@@ -186,7 +186,7 @@ export default function LandingPage({ onNavigate }: { onNavigate: (p: Page) => v
                 </div>
               </div>
               {/* Processing badge */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-navy-900/90 border border-navy-500/40 text-xs font-mono text-slate-300">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full bg-navy-900/90 border border-navy-500/40 text-[10px] sm:text-xs font-mono text-slate-300 whitespace-nowrap">
                 <span className="text-slate-500">10m</span>
                 <span className="text-navy-400">→</span>
                 <span className="text-blue-electric">AI Processing</span>
@@ -199,15 +199,15 @@ export default function LandingPage({ onNavigate }: { onNavigate: (p: Page) => v
       </section>
 
       {/* Features */}
-      <section className="px-6 lg:px-16 py-16 max-w-7xl mx-auto">
-        <div className="text-center mb-10">
+      <section className="px-4 sm:px-6 lg:px-16 py-12 sm:py-16 max-w-7xl mx-auto">
+        <div className="text-center mb-8 sm:mb-10">
           <div className="text-xs font-mono text-blue-electric mb-2 uppercase tracking-widest">Core Capabilities</div>
-          <h2 className="font-display font-700 text-2xl lg:text-3xl text-white">Scientific AI for Satellite Imagery</h2>
+          <h2 className="font-display font-700 text-xl sm:text-2xl lg:text-3xl text-white">Scientific AI for Satellite Imagery</h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {features.map((f) => (
-            <div key={f.title} className={`p-5 rounded-xl bg-navy-800 border ${f.border} hover:border-opacity-50 transition-all hover:-translate-y-0.5`}>
-              <div className={`w-9 h-9 rounded-lg ${f.bg} border ${f.border} flex items-center justify-center ${f.color} text-lg mb-4`}>
+            <div key={f.title} className={`p-4 sm:p-5 rounded-xl bg-navy-800 border ${f.border} hover:border-opacity-50 transition-all hover:-translate-y-0.5`}>
+              <div className={`w-9 h-9 rounded-lg ${f.bg} border ${f.border} flex items-center justify-center ${f.color} text-lg mb-3 sm:mb-4`}>
                 {f.icon}
               </div>
               <h3 className={`font-display font-600 text-sm ${f.color} mb-2`}>{f.title}</h3>
@@ -218,7 +218,7 @@ export default function LandingPage({ onNavigate }: { onNavigate: (p: Page) => v
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-navy-500/30 px-6 lg:px-16 py-6 flex items-center justify-between text-xs font-mono text-slate-600">
+      <footer className="border-t border-navy-500/30 px-4 sm:px-6 lg:px-16 py-5 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-mono text-slate-600">
         <span>© 2024 GeoSR-AI · All rights reserved</span>
         <span>Sentinel-2 · ESA Copernicus Programme</span>
       </footer>

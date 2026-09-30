@@ -66,12 +66,12 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: Page) => 
 
   return (
     <div className="h-full overflow-y-auto bg-navy-900">
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between mb-5 sm:mb-6 gap-3 flex-wrap">
           <div>
             <div className="text-xs font-mono text-blue-electric uppercase tracking-widest mb-1">Project History</div>
-            <h1 className="font-display font-700 text-2xl text-white">Satellite Analysis Projects</h1>
+            <h1 className="font-display font-700 text-xl sm:text-2xl text-white">Satellite Analysis Projects</h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="px-3 py-1.5 rounded-lg bg-navy-800 border border-navy-500/40 text-xs text-slate-400">
@@ -151,7 +151,7 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: Page) => 
 
         {/* Grid */}
         {!loading && projects.length > 0 && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((p) => (
               <div
                 key={p.id}

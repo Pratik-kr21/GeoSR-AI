@@ -93,7 +93,7 @@ export default function HistoricalComparisonPage({
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-6 z-10 relative">
+      <main className="flex-1 overflow-auto p-4 sm:p-6 z-10 relative">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="bg-navy-900/80 border border-navy-700 rounded-xl p-6 shadow-2xl">
             <h2 className="text-lg font-bold text-white mb-4">Analysis Parameters</h2>

@@ -77,7 +77,7 @@ export default function ValidationPage({ objectName }: { objectName: string | nu
 
   return (
     <div className="h-full overflow-y-auto bg-navy-900">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
           <div className="text-xs font-mono text-blue-electric uppercase tracking-widest mb-1">Scientific Validation</div>
@@ -86,7 +86,7 @@ export default function ValidationPage({ objectName }: { objectName: string | nu
         </div>
 
         {/* Comparison images */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {comparisons.map((c, i) => (
             <div key={c.label} className={`rounded-xl overflow-hidden border ${c.color} bg-navy-800`}>
               <div className="relative aspect-video">
@@ -112,7 +112,7 @@ export default function ValidationPage({ objectName }: { objectName: string | nu
         </div>
 
         {/* Charts row */}
-        <div className="grid lg:grid-cols-3 gap-4">
+        <div className="grid lg:grid-cols-3 gap-3 sm:gap-4">
           {/* Bar chart */}
           <div className="lg:col-span-2 bg-navy-800 rounded-xl border border-navy-500/40 p-4">
             <div className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">Validation Metrics</div>
@@ -150,7 +150,7 @@ export default function ValidationPage({ objectName }: { objectName: string | nu
         {/* Geo-consistency */}
         <div className="bg-navy-800 rounded-xl border border-navy-500/40 p-5">
           <div className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-4">Geo-Consistency Validation</div>
-          <div className="flex items-center gap-6 flex-wrap">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
             <div className="flex items-center gap-3 text-sm text-slate-400 flex-wrap">
               <span className="px-3 py-1.5 rounded-lg bg-blue-electric/10 border border-blue-electric/30 text-blue-electric text-xs font-mono">Enhanced Output</span>
               <span className="text-slate-600">→ Downsample to 10m →</span>
@@ -167,7 +167,7 @@ export default function ValidationPage({ objectName }: { objectName: string | nu
         </div>
 
         {/* Metric cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {barData.map((m) => (
             <div key={m.metric} className="bg-navy-800 border border-navy-500/30 rounded-xl p-3 text-center">
               <div className="text-[10px] font-mono text-slate-500 mb-1">{m.metric}</div>

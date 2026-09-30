@@ -74,7 +74,7 @@ export default function App() {
   return (
     <div className="size-full flex bg-navy-900">
       <Sidebar current={page} onNavigate={setPage} />
-      <main className="flex-1 min-w-0 overflow-hidden">
+      <main className="flex-1 min-w-0 overflow-hidden pt-14 md:pt-0">
         {renderPage()}
       </main>
     </div>

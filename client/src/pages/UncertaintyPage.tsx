@@ -101,7 +101,7 @@ export default function UncertaintyPage({ objectName }: { objectName: string | n
       </div>
 
       {/* Info panel */}
-      <div className="shrink-0 bg-navy-800 border-t border-navy-500/40 p-6">
+      <div className="shrink-0 bg-navy-800 border-t border-navy-500/40 p-4 sm:p-6">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div>

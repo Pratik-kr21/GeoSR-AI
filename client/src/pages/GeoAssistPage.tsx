@@ -22,6 +22,7 @@ export default function GeoAssistPage() {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [showContext, setShowContext] = useState(false);
   const [contextData, setContextData] = useState([
     { label: "Input", value: "Sentinel-2 GeoTIFF" },
     { label: "Input Resolution", value: "10m" },
@@ -94,16 +95,25 @@ export default function GeoAssistPage() {
       {/* Chat area */}
       <div className="flex-1 flex flex-col min-w-0 border-r border-navy-500/40">
         {/* Header */}
-        <div className="shrink-0 bg-navy-800 border-b border-navy-500/40 px-5 py-4">
+        <div className="shrink-0 bg-navy-800 border-b border-navy-500/40 px-4 sm:px-5 py-3 sm:py-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-purple-ai/20 border border-purple-ai/40 flex items-center justify-center text-purple-ai text-sm">◎</div>
-            <div>
+            <div className="w-8 h-8 rounded-lg bg-purple-ai/20 border border-purple-ai/40 flex items-center justify-center text-purple-ai text-sm shrink-0">◎</div>
+            <div className="min-w-0">
               <div className="font-display font-700 text-white text-sm">GeoAssist</div>
-              <div className="text-[10px] font-mono text-slate-500">Offline AI Assistant for Satellite Image Interpretation</div>
+              <div className="text-[10px] font-mono text-slate-500 hidden sm:block">Offline AI Assistant for Satellite Image Interpretation</div>
             </div>
-            <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-signal/10 border border-emerald-signal/20 text-[10px] font-mono text-emerald-signal">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal animate-pulse" />
-              Running Locally via Ollama
+            <div className="ml-auto flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-signal/10 border border-emerald-signal/20 text-[10px] font-mono text-emerald-signal">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal animate-pulse" />
+                Running Locally via Ollama
+              </div>
+              {/* Mobile context toggle */}
+              <button
+                onClick={() => setShowContext(v => !v)}
+                className="md:hidden px-2.5 py-1 rounded-full border border-navy-500/40 text-[10px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                {showContext ? "Hide Info" : "Context"}
+              </button>
             </div>
           </div>
         </div>
@@ -157,26 +167,26 @@ export default function GeoAssistPage() {
         </div>
 
         {/* Input */}
-        <div className="shrink-0 border-t border-navy-500/40 bg-navy-800 px-4 py-3 flex gap-2">
+        <div className="shrink-0 border-t border-navy-500/40 bg-navy-800 px-3 sm:px-4 py-3 flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send(input)}
-            placeholder="Ask about the satellite analysis, uncertainty, or validation results…"
-            className="flex-1 bg-navy-700 border border-navy-500/40 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-electric/50 transition-colors"
+            placeholder="Ask about the satellite analysis…"
+            className="flex-1 bg-navy-700 border border-navy-500/40 rounded-xl px-3 sm:px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-electric/50 transition-colors"
           />
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || thinking}
-            className="px-4 py-2 rounded-xl bg-blue-electric text-white text-sm font-display font-600 hover:bg-blue-600 disabled:opacity-40 transition-colors"
+            className="px-3 sm:px-4 py-2 rounded-xl bg-blue-electric text-white text-sm font-display font-600 hover:bg-blue-600 disabled:opacity-40 transition-colors"
           >
             Send
           </button>
         </div>
       </div>
 
-      {/* Context panel */}
-      <div className="w-64 shrink-0 bg-navy-800 overflow-y-auto">
+      {/* Context panel – hidden on mobile unless toggled */}
+      <div className={`w-64 shrink-0 bg-navy-800 overflow-y-auto flex-col ${showContext ? "flex" : "hidden md:flex"}`}>
         <div className="px-4 py-3 border-b border-navy-500/40">
           <div className="text-xs font-display font-600 text-slate-300 uppercase tracking-wider">Analysis Context</div>
         </div>

@@ -71,3 +71,38 @@ html, body, #root {
 .original-overlay-blur img {
   filter: blur(2px) saturate(0.85);
 }
+
+/* ── Mobile Responsiveness ─────────────────────────────────────────── */
+
+/* Prevent horizontal overflow on all screens */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Smooth scrolling everywhere */
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+/* Minimum touch target for accessibility */
+button, a {
+  min-height: 36px;
+}
+
+/* Sidebar drawer transition */
+.sidebar-drawer {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Make charts/maps touchable */
+.cursor-ew-resize {
+  touch-action: none;
+}
+
+/* Safe area padding for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

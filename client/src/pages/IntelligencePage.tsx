@@ -106,8 +106,8 @@ export default function IntelligencePage({
 
   return (
     <div className="h-full overflow-y-auto bg-navy-900">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
           <div>
             <div className="text-[10px] font-mono text-cyan-glow uppercase tracking-widest mb-1">
               Geospatial Intelligence Layer
@@ -117,16 +117,16 @@ export default function IntelligencePage({
               Prototype analytical indicators - not validated scientific measurements
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {summary?.last_analyzed_at && (
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="text-[10px] font-mono text-slate-500 hidden sm:inline">
                 Last: {new Date(summary.last_analyzed_at).toLocaleString()}
               </span>
             )}
             <button
               onClick={handleAnalyze}
               disabled={analyzing || !objectName}
-              className="px-4 py-2 rounded-xl bg-cyan-glow/15 border border-cyan-glow/40 text-sm text-cyan-glow font-display font-600 hover:bg-cyan-glow/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 sm:px-4 py-2 rounded-xl bg-cyan-glow/15 border border-cyan-glow/40 text-xs sm:text-sm text-cyan-glow font-display font-600 hover:bg-cyan-glow/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {analyzing ? (
                 <span className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export default function IntelligencePage({
 
         {!loading && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <MetricCard label="NDVI Mean" value={summary?.ndvi_mean ?? null}
                 sub={summary?.ndvi_health_class || 'Not analyzed'} color="text-emerald-signal" icon="VEG" />
               <MetricCard label="NDWI Mean" value={summary?.ndwi_mean ?? null}
@@ -238,7 +238,7 @@ export default function IntelligencePage({
             )}
 
             {summary && (
-              <div className="grid grid-cols-3 gap-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <button onClick={() => onNavigate('risk-analysis')}
                   className="py-3 rounded-xl bg-navy-800 border border-amber-warn/30 hover:border-amber-warn/60 text-sm font-display font-600 text-slate-300 hover:text-white transition-all">
                   Full Risk Analysis
